@@ -14,7 +14,8 @@ import {
   Sparkles,
   Shield,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 
 export default function Home() {
@@ -183,7 +184,7 @@ export default function Home() {
                   <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Path</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Latency</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Timestamp</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Message</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -283,13 +284,16 @@ function QuickActionCard({
 }
 
 function TraceRow({ index }: { index: number }) {
-  const statuses = ['200', '200', '200', '500', '200'];
-  const methods = ['GET', 'POST', 'GET', 'GET', 'PUT'];
-  const paths = ['/api/users', '/api/auth', '/api/users/123', '/api/payment', '/api/users/456'];
-  const latencies = ['45ms', '32ms', '67ms', '1234ms', '28ms'];
+  const traces = [
+    { id: 'req-success-001', status: '200', method: 'POST', path: '/api/auth/login', latency: '45.2ms', error: null },
+    { id: 'req-video-content', status: '200', method: 'GET', path: '/api/content/video/12345', latency: '125.8ms', error: null },
+    { id: 'req-partial-789', status: '503', method: 'GET', path: '/api/users/profile', latency: '102.5ms', error: 'Service unavailable' },
+    { id: 'req-ratelimit-exceeded', status: '429', method: 'POST', path: '/api/comments', latency: '3.5ms', error: 'Rate limit exceeded' },
+    { id: 'req-def-456', status: '401', method: 'POST', path: '/api/auth', latency: '4.0ms', error: 'JWT expired' },
+  ];
   
-  const status = statuses[index];
-  const isError = status === '500';
+  const trace = traces[index];
+  const isError = ['401', '429', '500', '503'].includes(trace.status);
   
   return (
     <motion.tr
@@ -299,29 +303,49 @@ function TraceRow({ index }: { index: number }) {
       className="hover:bg-white/5 transition-colors"
     >
       <td className="py-3 px-4">
-        <code className="text-cyan-400 text-xs">req-abc-{index + 1}</code>
+        <Link href={`/flow/${trace.id}`}>
+          <code className="text-cyan-400 text-xs hover:text-cyan-300 cursor-pointer">{trace.id}</code>
+        </Link>
       </td>
       <td className="py-3 px-4">
         <span className="px-2 py-1 rounded-md bg-blue-500/20 text-blue-300 text-xs font-semibold">
-          {methods[index]}
+          {trace.method}
         </span>
       </td>
-      <td className="py-3 px-4 text-sm text-gray-300">{paths[index]}</td>
+      <td className="py-3 px-4 text-sm text-gray-300">{trace.path}</td>
       <td className="py-3 px-4">
         {isError ? (
           <span className="flex items-center gap-2 px-2 py-1 rounded-md bg-red-500/20 text-red-300 text-xs font-semibold w-fit glow-red">
             <AlertTriangle className="w-3 h-3" />
-            {status}
+            {trace.status}
           </span>
         ) : (
           <span className="flex items-center gap-2 px-2 py-1 rounded-md bg-green-500/20 text-green-300 text-xs font-semibold w-fit">
             <CheckCircle2 className="w-3 h-3" />
-            {status}
+            {trace.status}
           </span>
         )}
       </td>
-      <td className="py-3 px-4 text-sm text-gray-300">{latencies[index]}</td>
-      <td className="py-3 px-4 text-sm text-gray-400">10:30:15</td>
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-300">{trace.latency}</span>
+          {parseFloat(trace.latency) > 100 && (
+            <Zap className="w-3 h-3 text-yellow-400" />
+          )}
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        <div className="text-sm text-gray-400">
+          {trace.error ? (
+            <span className="text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {trace.error}
+            </span>
+          ) : (
+            <span className="text-green-400">Success</span>
+          )}
+        </div>
+      </td>
     </motion.tr>
   );
 }

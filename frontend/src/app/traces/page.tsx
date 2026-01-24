@@ -14,12 +14,11 @@ export default function TracesPage() {
   });
 
   const traces = [
-    { id: "req-abc-123", method: "GET", path: "/api/users", status: 200, latency: 45, timestamp: "10:30:15", errorMessage: null },
-    { id: "req-def-456", method: "POST", path: "/api/auth", status: 401, latency: 12, timestamp: "10:30:20", errorMessage: "Token expired" },
-    { id: "req-ghi-789", method: "GET", path: "/api/products", status: 200, latency: 128, timestamp: "10:30:25", errorMessage: null },
-    { id: "req-jkl-012", method: "PUT", path: "/api/users/123", status: 503, latency: 5000, timestamp: "10:30:30", errorMessage: "Circuit breaker open" },
-    { id: "req-mno-345", method: "DELETE", path: "/api/users/456", status: 200, latency: 67, timestamp: "10:30:35", errorMessage: null },
-    { id: "req-pqr-678", method: "GET", path: "/api/orders", status: 500, latency: 2340, timestamp: "10:30:40", errorMessage: "Internal server error" },
+    { id: "req-success-001", method: "POST", path: "/api/auth/login", status: 200, latency: 45.2, timestamp: "10:30:15", errorMessage: null },
+    { id: "req-def-456", method: "POST", path: "/api/auth", status: 401, latency: 4.0, timestamp: "10:30:20", errorMessage: "JWT token expired" },
+    { id: "req-partial-789", method: "GET", path: "/api/users/profile", status: 503, latency: 102.5, timestamp: "10:29:15", errorMessage: "Service unavailable after 2 retries" },
+    { id: "req-video-content", method: "GET", path: "/api/content/video/12345", status: 200, latency: 125.8, timestamp: "11:15:30", errorMessage: null },
+    { id: "req-ratelimit-exceeded", method: "POST", path: "/api/comments", status: 429, latency: 3.5, timestamp: "11:20:45", errorMessage: "Rate limit exceeded" },
   ];
 
   return (
@@ -131,15 +130,16 @@ function TraceCard({ trace, index }: { trace: any; index: number }) {
   const isSlowLatency = trace.latency > 1000;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -50 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      whileHover={{ scale: 1.02, y: -5 }}
-      className={`glass-strong rounded-xl p-6 border border-white/10 hover:border-purple-400/50 transition-all cursor-pointer ${
-        isError ? 'glow-red' : 'hover:glow-cyan'
-      }`}
-    >
+    <Link href={`/flow/${trace.id}`}>
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, delay: index * 0.05 }}
+        whileHover={{ scale: 1.02, y: -5 }}
+        className={`glass-strong rounded-xl p-6 border border-white/10 hover:border-purple-400/50 transition-all cursor-pointer ${
+          isError ? 'glow-red' : 'hover:glow-cyan'
+        }`}
+      >
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-4">
@@ -194,5 +194,6 @@ function TraceCard({ trace, index }: { trace: any; index: number }) {
         </div>
       </div>
     </motion.div>
+    </Link>
   );
 }

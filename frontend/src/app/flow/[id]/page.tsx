@@ -47,29 +47,54 @@ export default function FlowPage() {
   }
 
   function TimelineWaterfall({ steps, totalDuration }: { steps: typeof flowSteps; totalDuration: number }) {
+    // Calculate scale marks dynamically
+    const maxDuration = Math.max(totalDuration, 10); // Minimum 10ms scale
+    const scaleMarks = maxDuration <= 10 ? [0, 2, 4, 6, 8, 10] :
+                       maxDuration <= 50 ? [0, 10, 20, 30, 40, 50] :
+                       maxDuration <= 100 ? [0, 25, 50, 75, 100] :
+                       [0, maxDuration * 0.25, maxDuration * 0.5, maxDuration * 0.75, maxDuration];
+
     return (
       <div className="space-y-3">
         {/* Time scale */}
-        <div className="relative h-8 mb-4">
+        <div className="relative h-8 mb-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-b border-gray-700" />
           </div>
           <div className="relative flex justify-between text-xs text-gray-500">
-            {[0, 1, 2, 3, 4].map(t => (
-              <div key={t} className="flex flex-col items-center">
-                <div className="w-px h-2 bg-gray-600 mb-1" />
-                <span>{t}ms</span>
+            {scaleMarks.map((t, idx) => (
+              <div key={idx} className="flex flex-col items-center">
+                <div className="w-px h-3 bg-gray-600 mb-1" />
+                <span className="font-mono">{t.toFixed(1)}ms</span>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Total Duration Badge */}
+        <div className="flex items-center justify-between mb-4 p-4 glass-strong rounded-xl border-2 border-purple-500/30 glow">
+          <div className="flex items-center gap-3">
+            <Clock className="w-6 h-6 text-purple-400" />
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Request Duration</div>
+              <div className="text-3xl font-bold gradient-text">{totalDuration.toFixed(2)}ms</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <div className="text-xs text-gray-400">Steps Completed</div>
+              <div className="text-lg font-bold text-cyan-400">{steps.filter(s => s.status === 'pass').length}/{steps.length}</div>
+            </div>
+          </div>
+        </div>
+
         {/* Timeline bars */}
         {steps.map((step, idx) => {
-          const leftPercent = (step.startTime / totalDuration) * 100;
-          const widthPercent = (step.duration / totalDuration) * 100;
+          const leftPercent = (step.startTime / maxDuration) * 100;
+          const widthPercent = Math.max((step.duration / maxDuration) * 100, 0.5); // Min 0.5% width
           const isError = step.status === 'fail';
           const isWarning = step.status === 'warning';
+          const isSkip = step.status === 'skip';
           
           return (
             <motion.div
@@ -79,14 +104,28 @@ export default function FlowPage() {
               transition={{ delay: idx * 0.1 }}
               className="relative"
             >
-              {/* Step name */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-gray-300 min-w-[200px]">{step.filter || step.name}</span>
-                <span className="text-xs text-gray-500">({step.duration}ms)</span>
+              {/* Step name and timing info */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-white min-w-[220px]">{step.filter || step.name}</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500 font-mono">Start: <span className="text-cyan-400">{step.startTime.toFixed(1)}ms</span></span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-500 font-mono">Duration: <span className="text-purple-400">{step.duration.toFixed(1)}ms</span></span>
+                  </div>
+                </div>
+                <span className={`text-xs px-3 py-1 rounded-lg font-bold ${
+                  isError ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                  isWarning ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                  isSkip ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30' :
+                  'bg-green-500/20 text-green-300 border border-green-500/30'
+                }`}>
+                  {step.status.toUpperCase()}
+                </span>
               </div>
               
               {/* Timeline bar container */}
-              <div className="relative h-10 mb-2">
+              <div className="relative h-12 mb-3 bg-black/20 rounded-lg">
                 <motion.div
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
@@ -94,20 +133,27 @@ export default function FlowPage() {
                   style={{ 
                     left: `${leftPercent}%`, 
                     width: `${widthPercent}%`,
-                    originX: 0
+                    minWidth: widthPercent < 5 ? '40px' : 'auto'
                   }}
                   className={`absolute h-full rounded-lg flex items-center px-3 ${
                     isError 
-                      ? 'bg-gradient-to-r from-red-500/80 to-red-600/80 glow-red' 
+                      ? 'bg-gradient-to-r from-red-500/90 to-red-600/90 glow-red' 
                       : isWarning 
-                      ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-600/80 glow' 
-                      : 'bg-gradient-to-r from-cyan-500/80 to-purple-500/80 glow-cyan'
+                      ? 'bg-gradient-to-r from-yellow-500/90 to-yellow-600/90 glow' 
+                      : isSkip
+                      ? 'bg-gray-600/50 border border-gray-500/50'
+                      : 'bg-gradient-to-r from-cyan-500/90 to-purple-500/90 glow-cyan'
                   }`}
                 >
-                  {step.status === 'pass' && <CheckCircle className="w-4 h-4 text-green-300 mr-2" />}
-                  {step.status === 'fail' && <XCircle className="w-4 h-4 text-white mr-2" />}
-                  {step.status === 'warning' && <AlertTriangle className="w-4 h-4 text-white mr-2" />}
-                  <span className="text-xs font-semibold text-white truncate">{step.name}</span>
+                  <div className="flex items-center gap-2 w-full">
+                    {step.status === 'pass' && <CheckCircle className="w-4 h-4 text-green-300 flex-shrink-0" />}
+                    {step.status === 'fail' && <XCircle className="w-4 h-4 text-white flex-shrink-0" />}
+                    {step.status === 'warning' && <AlertTriangle className="w-4 h-4 text-white flex-shrink-0" />}
+                    {step.status === 'skip' && <AlertTriangle className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+                    {widthPercent > 10 && (
+                      <span className="text-xs font-semibold text-white truncate">{step.name}</span>
+                    )}
+                  </div>
                 </motion.div>
               </div>
             </motion.div>
@@ -201,7 +247,7 @@ export default function FlowPage() {
         <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/requests">
+              <Link href="/traces">
                 <motion.button 
                   whileHover={{ scale: 1.1, x: -5 }}
                   className="w-10 h-10 rounded-xl glass hover:glass-strong flex items-center justify-center glow-cyan"

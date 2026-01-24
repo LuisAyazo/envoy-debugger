@@ -438,7 +438,343 @@ export const requestFlows: Record<string, RequestFlow> = {
     }
   },
 
-  // Add more requests here...
+  "req-video-content": {
+    id: "req-video-content",
+    method: "GET",
+    path: "/api/content/video/12345",
+    status: 200,
+    statusText: "OK",
+    timestamp: "2026-01-23T11:15:30.500Z",
+    metadata: {
+      traceId: "trace-video-abc",
+      spanId: "span-video-001",
+      parentSpanId: "span-root",
+      requestId: "req-video-content",
+      totalDuration: 125.8,
+      sourceService: "cdn-edge",
+      targetService: "content-service",
+      protocol: "HTTP/2.0"
+    },
+    flowSteps: [
+      {
+        id: 1,
+        name: "Request Received",
+        status: "pass",
+        duration: 0.3,
+        startTime: 0,
+        filter: "listener",
+        details: {
+          method: "GET",
+          path: "/api/content/video/12345",
+          headers: {
+            "Accept": "video/mp4",
+            "User-Agent": "Smart-TV/3.0",
+            "X-Device-ID": "tv-samsung-xyz"
+          },
+          source_ip: "203.0.113.45",
+          destination: "api-gateway:443"
+        }
+      },
+      {
+        id: 2,
+        name: "Route Matching",
+        status: "pass",
+        duration: 0.8,
+        startTime: 0.3,
+        filter: "router",
+        details: {
+          matched: true,
+          route: "content-video-route",
+          path_pattern: "/api/content/video/*",
+          cluster: "content-service-cluster",
+          timeout: "120s"
+        }
+      },
+      {
+        id: 3,
+        name: "CORS Check",
+        status: "pass",
+        duration: 0.5,
+        startTime: 1.1,
+        filter: "envoy.filters.http.cors",
+        details: {
+          origin: "https://www.univision.com",
+          allowed: true,
+          methods: ["GET", "HEAD"],
+          headers: ["Content-Type", "Authorization"]
+        }
+      },
+      {
+        id: 4,
+        name: "Rate Limiting Check",
+        status: "pass",
+        duration: 1.2,
+        startTime: 1.6,
+        filter: "envoy.filters.http.ratelimit",
+        details: {
+          limit: "1000 requests/min",
+          current: "567 requests/min",
+          remaining: 433,
+          burst_size: 100
+        }
+      },
+      {
+        id: 5,
+        name: "Cache Lookup",
+        status: "pass",
+        duration: 2.5,
+        startTime: 2.8,
+        filter: "envoy.filters.http.cache",
+        details: {
+          cache_hit: false,
+          cache_key: "video:12345:v2",
+          ttl: "3600s"
+        }
+      },
+      {
+        id: 6,
+        name: "Upstream Request",
+        status: "pass",
+        duration: 118.5,
+        startTime: 5.3,
+        filter: "upstream",
+        details: {
+          backend_host: "content-service-pod-789",
+          response_size: "25.5 MB",
+          content_type: "video/mp4"
+        }
+      },
+      {
+        id: 7,
+        name: "Response Transform",
+        status: "pass",
+        duration: 2.0,
+        startTime: 123.8,
+        filter: "envoy.filters.http.lua",
+        details: {
+          script: "add_cdn_headers.lua",
+          headers_added: ["X-CDN-Cache: MISS", "X-Edge-Location: US-EAST-1"]
+        }
+      }
+    ],
+    insights: [
+      { type: "info", message: "Large video content delivered in 125.8ms", suggestion: "Consider enabling CDN caching for faster delivery" },
+      { type: "info", message: "Rate limit healthy: 433 requests remaining", suggestion: "Current traffic within limits" },
+      { type: "warning", message: "Cache miss - fetching from origin", suggestion: "Verify cache configuration and TTL settings" }
+    ],
+    envoyResources: {
+      httpRoute: {
+        apiVersion: "gateway.networking.k8s.io/v1",
+        kind: "HTTPRoute",
+        metadata: {
+          name: "content-video-route",
+          namespace: "gateway-system"
+        },
+        spec: {
+          parentRefs: [{ name: "api-gateway" }],
+          rules: [
+            {
+              matches: [{ path: { type: "PathPrefix", value: "/api/content/video" } }],
+              backendRefs: [{ name: "content-backend", port: 8080 }]
+            }
+          ]
+        }
+      },
+      backend: {
+        apiVersion: "gloo.solo.io/v1",
+        kind: "Backend",
+        metadata: {
+          name: "content-backend",
+          namespace: "gateway-system"
+        },
+        spec: {
+          address: "content-service.content-ns.svc.cluster.local",
+          port: 8080,
+          protocol: "HTTP",
+          healthCheck: {
+            path: "/health",
+            interval: "10s"
+          }
+        }
+      },
+      rateLimitPolicy: {
+        apiVersion: "gateway.networking.k8s.io/v1alpha2",
+        kind: "RateLimitPolicy",
+        metadata: {
+          name: "content-ratelimit",
+          namespace: "gateway-system"
+        },
+        spec: {
+          targetRef: { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "content-video-route" },
+          rateLimits: [
+            {
+              limit: 1000,
+              unit: "minute",
+              burstSize: 100
+            }
+          ]
+        }
+      },
+      corsPolicy: {
+        apiVersion: "gateway.networking.k8s.io/v1alpha2",
+        kind: "CORSPolicy",
+        metadata: {
+          name: "content-cors",
+          namespace: "gateway-system"
+        },
+        spec: {
+          targetRef: { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "content-video-route" },
+          allowOrigins: ["https://www.univision.com", "https://m.univision.com"],
+          allowMethods: ["GET", "HEAD"],
+          maxAge: "7200s"
+        }
+      }
+    }
+  },
+
+  "req-ratelimit-exceeded": {
+    id: "req-ratelimit-exceeded",
+    method: "POST",
+    path: "/api/comments",
+    status: 429,
+    statusText: "Too Many Requests",
+    timestamp: "2026-01-23T11:20:45.789Z",
+    metadata: {
+      traceId: "trace-ratelimit-xyz",
+      spanId: "span-rl-001",
+      parentSpanId: "span-root",
+      requestId: "req-ratelimit-exceeded",
+      totalDuration: 3.5,
+      sourceService: "web-app",
+      targetService: "comments-service",
+      protocol: "HTTP/1.1"
+    },
+    flowSteps: [
+      {
+        id: 1,
+        name: "Request Received",
+        status: "pass",
+        duration: 0.2,
+        startTime: 0,
+        filter: "listener",
+        details: {
+          method: "POST",
+          path: "/api/comments",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer valid-token"
+          },
+          body_size: "512 bytes",
+          source_ip: "198.51.100.20"
+        }
+      },
+      {
+        id: 2,
+        name: "Route Matching",
+        status: "pass",
+        duration: 0.5,
+        startTime: 0.2,
+        filter: "router",
+        details: {
+          matched: true,
+          route: "comments-route",
+          path_pattern: "/api/comments",
+          cluster: "comments-service-cluster"
+        }
+      },
+      {
+        id: 3,
+        name: "JWT Validation",
+        status: "pass",
+        duration: 1.5,
+        startTime: 0.7,
+        filter: "envoy.filters.http.jwt_authn",
+        details: {
+          token_valid: true,
+          user_id: "user-456",
+          claims: { sub: "user-456", role: "user" }
+        }
+      },
+      {
+        id: 4,
+        name: "Rate Limiting Check",
+        status: "fail",
+        duration: 1.3,
+        startTime: 2.2,
+        filter: "envoy.filters.http.ratelimit",
+        details: {
+          limit: "10 requests/min per user",
+          current: "11 requests/min",
+          remaining: 0,
+          user_id: "user-456",
+          reason: "Quota exceeded",
+          retry_after: "45 seconds"
+        }
+      }
+    ],
+    insights: [
+      { type: "error", message: "Rate limit exceeded: 11/10 requests per minute", suggestion: "User should wait 45 seconds before retrying" },
+      { type: "warning", message: "Frequent rate limit violations from this user", suggestion: "Consider implementing client-side throttling" },
+      { type: "info", message: "Request blocked early, saving backend resources", suggestion: "Rate limiting working as designed" }
+    ],
+    envoyResources: {
+      httpRoute: {
+        apiVersion: "gateway.networking.k8s.io/v1",
+        kind: "HTTPRoute",
+        metadata: {
+          name: "comments-route",
+          namespace: "gateway-system"
+        },
+        spec: {
+          parentRefs: [{ name: "api-gateway" }],
+          rules: [
+            {
+              matches: [{ path: { type: "Exact", value: "/api/comments" }, method: "POST" }],
+              backendRefs: [{ name: "comments-backend", port: 8080 }]
+            }
+          ]
+        }
+      },
+      backend: {
+        apiVersion: "gloo.solo.io/v1",
+        kind: "Backend",
+        metadata: {
+          name: "comments-backend",
+          namespace: "gateway-system"
+        },
+        spec: {
+          address: "comments-service.comments-ns.svc.cluster.local",
+          port: 8080,
+          protocol: "HTTP"
+        }
+      },
+      rateLimitPolicy: {
+        apiVersion: "gateway.networking.k8s.io/v1alpha2",
+        kind: "RateLimitPolicy",
+        metadata: {
+          name: "comments-ratelimit",
+          namespace: "gateway-system"
+        },
+        spec: {
+          targetRef: { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "comments-route" },
+          rateLimits: [
+            {
+              limit: 10,
+              unit: "minute",
+              identifier: "user_id",
+              action: "reject",
+              responseHeaders: {
+                "X-RateLimit-Limit": "10",
+                "X-RateLimit-Remaining": "0",
+                "Retry-After": "45"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+
   "req-partial-789": {
     id: "req-partial-789",
     method: "GET",
