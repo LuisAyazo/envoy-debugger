@@ -27,6 +27,14 @@ export type RequestFlow = {
     targetService: string;
     protocol: string;
   };
+  clientInfo: {
+    ip: string;
+    userAgent: string;
+    country: string;
+    city: string;
+    asn: string;
+    requestHeaders: Record<string, string>;
+  };
   flowSteps: FlowStep[];
   insights: Array<{
     type: "error" | "warning" | "info";
@@ -61,6 +69,21 @@ export const requestFlows: Record<string, RequestFlow> = {
       sourceService: "mobile-app",
       targetService: "auth-service",
       protocol: "HTTP/2.0"
+    },
+    clientInfo: {
+      ip: "192.168.1.100",
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+      country: "United States",
+      city: "Miami, FL",
+      asn: "AS7018 AT&T Services Inc.",
+      requestHeaders: {
+        "content-type": "application/json",
+        "accept": "application/json",
+        "authorization": "Bearer eyJhbGc...",
+        "x-request-id": "req-success-001",
+        "x-forwarded-for": "192.168.1.100",
+        "user-agent": "Mobile-App/2.1.0"
+      }
     },
     flowSteps: [
       {
@@ -297,6 +320,21 @@ export const requestFlows: Record<string, RequestFlow> = {
       targetService: "auth-service",
       protocol: "HTTP/2.0"
     },
+    clientInfo: {
+      ip: "203.0.113.45",
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0",
+      country: "Mexico",
+      city: "Ciudad de México",
+      asn: "AS8151 Uninet S.A. de C.V.",
+      requestHeaders: {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "x-request-id": "req-def-456",
+        "origin": "https://www.univision.com",
+        "referer": "https://www.univision.com/auth"
+      }
+    },
     flowSteps: [
       {
         id: 1,
@@ -454,8 +492,21 @@ export const requestFlows: Record<string, RequestFlow> = {
       sourceService: "cdn-edge",
       targetService: "content-service",
       protocol: "HTTP/2.0"
-    },
-    flowSteps: [
+    },    clientInfo: {
+      ip: "198.51.100.23",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+      country: "United States",
+      city: "Los Angeles, CA",
+      asn: "AS15169 Google LLC",
+      requestHeaders: {
+        "accept": "video/mp4,video/*",
+        "range": "bytes=0-2097151",
+        "x-request-id": "req-video-content",
+        "x-device-type": "smart-tv",
+        "x-player-version": "4.2.1",
+        "origin": "https://video.univision.com"
+      }
+    },    flowSteps: [
       {
         id: 1,
         name: "Request Received",
@@ -632,10 +683,10 @@ export const requestFlows: Record<string, RequestFlow> = {
     }
   },
 
-  "req-ratelimit-exceeded": {
-    id: "req-ratelimit-exceeded",
+  "req-ratelimit-666": {
+    id: "req-ratelimit-666",
     method: "POST",
-    path: "/api/comments",
+    path: "/api/analytics/events",
     status: 429,
     statusText: "Too Many Requests",
     timestamp: "2026-01-23T11:20:45.789Z",
@@ -643,11 +694,25 @@ export const requestFlows: Record<string, RequestFlow> = {
       traceId: "trace-ratelimit-xyz",
       spanId: "span-rl-001",
       parentSpanId: "span-root",
-      requestId: "req-ratelimit-exceeded",
+      requestId: "req-ratelimit-666",
       totalDuration: 3.5,
       sourceService: "web-app",
-      targetService: "comments-service",
+      targetService: "analytics-service",
       protocol: "HTTP/1.1"
+    },
+    clientInfo: {
+      ip: "192.0.2.89",
+      userAgent: "UnivisionApp/3.0.5 (Android 13; Samsung Galaxy S23)",
+      country: "Puerto Rico",
+      city: "San Juan",
+      asn: "AS10396 Claro Puerto Rico",
+      requestHeaders: {
+        "content-type": "application/json",
+        "x-request-id": "req-ratelimit-666",
+        "x-app-version": "3.0.5",
+        "x-device-id": "device-789-abc",
+        "x-user-id": "user-67890"
+      }
     },
     flowSteps: [
       {
@@ -659,7 +724,7 @@ export const requestFlows: Record<string, RequestFlow> = {
         filter: "listener",
         details: {
           method: "POST",
-          path: "/api/comments",
+          path: "/api/analytics/events",
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer valid-token"
@@ -677,9 +742,9 @@ export const requestFlows: Record<string, RequestFlow> = {
         filter: "router",
         details: {
           matched: true,
-          route: "comments-route",
-          path_pattern: "/api/comments",
-          cluster: "comments-service-cluster"
+          route: "analytics-events-route",
+          path_pattern: "/api/analytics/events",
+          cluster: "analytics-service-cluster"
         }
       },
       {
@@ -722,15 +787,15 @@ export const requestFlows: Record<string, RequestFlow> = {
         apiVersion: "gateway.networking.k8s.io/v1",
         kind: "HTTPRoute",
         metadata: {
-          name: "comments-route",
+          name: "analytics-events-route",
           namespace: "gateway-system"
         },
         spec: {
           parentRefs: [{ name: "api-gateway" }],
           rules: [
             {
-              matches: [{ path: { type: "Exact", value: "/api/comments" }, method: "POST" }],
-              backendRefs: [{ name: "comments-backend", port: 8080 }]
+              matches: [{ path: { type: "Exact", value: "/api/analytics/events" }, method: "POST" }],
+              backendRefs: [{ name: "analytics-backend", port: 8080 }]
             }
           ]
         }
@@ -739,11 +804,11 @@ export const requestFlows: Record<string, RequestFlow> = {
         apiVersion: "gloo.solo.io/v1",
         kind: "Backend",
         metadata: {
-          name: "comments-backend",
+          name: "analytics-backend",
           namespace: "gateway-system"
         },
         spec: {
-          address: "comments-service.comments-ns.svc.cluster.local",
+          address: "analytics-service.analytics-ns.svc.cluster.local",
           port: 8080,
           protocol: "HTTP"
         }
@@ -752,11 +817,11 @@ export const requestFlows: Record<string, RequestFlow> = {
         apiVersion: "gateway.networking.k8s.io/v1alpha2",
         kind: "RateLimitPolicy",
         metadata: {
-          name: "comments-ratelimit",
+          name: "analytics-ratelimit",
           namespace: "gateway-system"
         },
         spec: {
-          targetRef: { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "comments-route" },
+          targetRef: { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "analytics-events-route" },
           rateLimits: [
             {
               limit: 10,
@@ -791,8 +856,20 @@ export const requestFlows: Record<string, RequestFlow> = {
       sourceService: "web-app",
       targetService: "user-service",
       protocol: "HTTP/1.1"
-    },
-    flowSteps: [
+    },    clientInfo: {
+      ip: "198.18.0.156",
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Firefox/121.0",
+      country: "Colombia",
+      city: "Bogotá",
+      asn: "AS3816 COLOMBIA TELECOMUNICACIONES S.A. ESP",
+      requestHeaders: {
+        "accept": "application/json",
+        "x-request-id": "req-partial-789",
+        "cookie": "session_id=abc123...",
+        "x-correlation-id": "corr-789-xyz",
+        "referer": "https://www.univision.com/profile"
+      }
+    },    flowSteps: [
       {
         id: 1,
         name: "Request Received",
