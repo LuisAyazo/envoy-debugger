@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-01-23T10:30:20.000Z",
+  "traceId": "trace-def-456",
+  "requestId": "req-def-456",
+  "method": "POST",
+  "path": "/api/auth",
+  "statusCode": 401,
+  "duration": 3.5,
+  "spans": [
+    {
+      "name": "http_request_received",
+      "duration": 0.5,
+      "status": "pass",
+      "tags": {
+        "method": "POST",
+        "path": "/api/auth",
+        "client_ip": "192.168.1.2"
+      }
+    },
+    {
+      "name": "http_route_match",
+      "duration": 1.2,
+      "status": "pass",
+      "tags": {
+        "route": "auth-route",
+        "pattern": "/api/auth*"
+      }
+    },
+    {
+      "name": "filter_jwt_auth",
+      "duration": 2.3,
+      "status": "fail",
+      "tags": {
+        "token_extracted": true,
+        "token_valid": false,
+        "error_reason": "token_expired",
+        "token_exp": 1674400815,
+        "current_time": 1674400924,
+        "exp_in_past": true,
+        "seconds_expired": 109
+      }
+    }
+  ],
+  "flowSteps": [
+    {
+      "order": 1,
+      "name": "Request Received",
+      "status": "pass",
+      "duration": 0.5,
+      "reason": null,
+      "metadata": {
+        "method": "POST",
+        "path": "/api/auth"
+      }
+    },
+    {
+      "order": 2,
+      "name": "Route Matching",
+      "status": "pass",
+      "duration": 1.2,
+      "reason": null,
+      "metadata": {
+        "matched_route": "auth-route"
+      }
+    },
+    {
+      "order": 3,
+      "name": "JWT Validation",
+      "status": "fail",
+      "duration": 2.3,
+      "reason": "Token expired",
+      "metadata": {
+        "filter": "jwt_auth",
+        "token_exp": 1674400815,
+        "current_time": 1674400924,
+        "seconds_expired": 109,
+        "remediation": "Request user to re-authenticate"
+      }
+    }
+  ],
+  "errors": [
+    {
+      "message": "JWT validation failed: token expired",
+      "component": "jwt_auth_filter",
+      "timestamp": "2026-01-23T10:30:20.002Z"
+    },
+    {
+      "message": "Request terminated with 401 Unauthorized",
+      "component": "envoy",
+      "timestamp": "2026-01-23T10:30:20.003Z"
+    }
+  ]
+}

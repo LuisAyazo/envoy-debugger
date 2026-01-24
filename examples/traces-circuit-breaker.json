@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-01-23T10:30:30.000Z",
+  "traceId": "trace-jkl-012",
+  "requestId": "req-jkl-012",
+  "method": "GET",
+  "path": "/api/products",
+  "statusCode": 503,
+  "duration": 5000.1,
+  "spans": [
+    {
+      "name": "http_request_received",
+      "duration": 0.5,
+      "status": "pass"
+    },
+    {
+      "name": "http_route_match",
+      "duration": 1.2,
+      "status": "pass"
+    },
+    {
+      "name": "filter_jwt_auth",
+      "duration": 2.3,
+      "status": "pass"
+    },
+    {
+      "name": "circuit_breaker_check",
+      "duration": 0.1,
+      "status": "fail",
+      "tags": {
+        "current_connections": 500,
+        "max_connections": 500,
+        "status": "AT_LIMIT"
+      }
+    }
+  ],
+  "flowSteps": [
+    {
+      "order": 1,
+      "name": "Request Received",
+      "status": "pass",
+      "duration": 0.5,
+      "reason": null
+    },
+    {
+      "order": 2,
+      "name": "Route Matching",
+      "status": "pass",
+      "duration": 1.2,
+      "reason": null
+    },
+    {
+      "order": 3,
+      "name": "JWT Validation",
+      "status": "pass",
+      "duration": 2.3,
+      "reason": null
+    },
+    {
+      "order": 4,
+      "name": "Circuit Breaker",
+      "status": "fail",
+      "duration": 0.1,
+      "reason": "Max connections reached",
+      "metadata": {
+        "current": 500,
+        "max": 500,
+        "pending_requests": 234,
+        "status": "open"
+      }
+    }
+  ],
+  "errors": [
+    {
+      "message": "Circuit breaker OPEN: max connections (500/500) reached",
+      "component": "circuit_breaker",
+      "timestamp": "2026-01-23T10:30:30.001Z"
+    },
+    {
+      "message": "Request rejected with 503 Service Unavailable",
+      "component": "envoy",
+      "timestamp": "2026-01-23T10:30:30.001Z"
+    }
+  ]
+}

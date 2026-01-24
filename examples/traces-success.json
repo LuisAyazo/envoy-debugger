@@ -1,0 +1,95 @@
+{
+  "timestamp": "2026-01-23T10:30:15.000Z",
+  "traceId": "trace-abc-123",
+  "requestId": "req-abc-123",
+  "method": "GET",
+  "path": "/api/users",
+  "statusCode": 200,
+  "duration": 45.3,
+  "spans": [
+    {
+      "name": "http_request_received",
+      "duration": 0.5,
+      "status": "pass",
+      "tags": {
+        "method": "GET",
+        "path": "/api/users",
+        "client_ip": "192.168.1.1"
+      }
+    },
+    {
+      "name": "http_route_match",
+      "duration": 1.2,
+      "status": "pass",
+      "tags": {
+        "route": "api-route",
+        "pattern": "/api/*"
+      }
+    },
+    {
+      "name": "filter_jwt_auth",
+      "duration": 2.3,
+      "status": "pass",
+      "tags": {
+        "token_valid": true,
+        "token_exp": 1674400815
+      }
+    },
+    {
+      "name": "filter_headers",
+      "duration": 0.8,
+      "status": "pass",
+      "tags": {
+        "headers_added": 2,
+        "headers_removed": 1
+      }
+    },
+    {
+      "name": "backend_forward",
+      "duration": 40.3,
+      "status": "pass",
+      "tags": {
+        "upstream": "identity-api:443",
+        "response_status": 200
+      }
+    }
+  ],
+  "flowSteps": [
+    {
+      "order": 1,
+      "name": "Request Received",
+      "status": "pass",
+      "duration": 0.5,
+      "reason": null
+    },
+    {
+      "order": 2,
+      "name": "Route Matching",
+      "status": "pass",
+      "duration": 1.2,
+      "reason": null
+    },
+    {
+      "order": 3,
+      "name": "JWT Validation",
+      "status": "pass",
+      "duration": 2.3,
+      "reason": null
+    },
+    {
+      "order": 4,
+      "name": "Header Manipulation",
+      "status": "pass",
+      "duration": 0.8,
+      "reason": null
+    },
+    {
+      "order": 5,
+      "name": "Backend Forward",
+      "status": "pass",
+      "duration": 40.3,
+      "reason": null
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-debugger-backend
+  namespace: gateway-debugger
+  labels:
+    app: gateway-debugger
+    component: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: gateway-debugger
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: gateway-debugger
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: gateway-debugger
+      containers:
+      - name: backend
+        image: gateway-debugger-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: STORAGE_MAX_ENTRIES
+          value: "10000"
+        - name: JAEGER_ENDPOINT
+          value: "http://jaeger-collector.monitoring:14268/api/traces"
+        - name: PROMETHEUS_ENDPOINT
+          value: "http://prometheus.monitoring:9090"
+        - name: KUBERNETES_ENABLED
+          value: "true"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/gateway-debugger
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: gateway-debugger-config
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-debugger-frontend
+  namespace: gateway-debugger
+  labels:
+    app: gateway-debugger
+    component: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: gateway-debugger
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: gateway-debugger
+        component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gateway-debugger-frontend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://gateway-debugger-backend:8080"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

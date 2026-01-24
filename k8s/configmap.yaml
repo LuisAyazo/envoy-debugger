@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-debugger-config
+  namespace: gateway-debugger
+data:
+  config.yaml: |
+    # Gateway Debugger Configuration
+    
+    # Port for the debugger API
+    port: 8080
+    
+    # Environment
+    environment: production
+    
+    # Log Level
+    log_level: info
+    
+    # Storage configuration
+    storage:
+      max_entries: 10000
+      cleanup_interval: 5m
+      retention_time: 1h
+    
+    # Jaeger configuration
+    jaeger:
+      enabled: true
+      endpoint: "http://jaeger-collector.monitoring:14268/api/traces"
+      service_name: "gateway-debugger"
+      sampler:
+        type: const
+        param: 1
+    
+    # Prometheus configuration
+    prometheus:
+      enabled: true
+      endpoint: "http://prometheus.monitoring:9090"
+      scrape_interval: 30s
+    
+    # Kubernetes configuration
+    kubernetes:
+      enabled: true
+      # Use in-cluster configuration
+      cluster_config: inCluster
+      
+      # Log aggregation
+      log_aggregation:
+        enabled: true
+        namespace_filter: "all"
+        pod_log_lines: 100
+      
+      # Event watching
+      events:
+        enabled: true
+        namespace_filter: "all"
+    
+    # WebSocket configuration
+    websocket:
+      enabled: true
+      max_clients: 100
+      max_message_size: 65536
+      heartbeat_interval: 30s
+    
+    # Security
+    security:
+      # API key authentication (optional)
+      api_key_auth: false
+      
+      # Rate limiting
+      rate_limit:
+        enabled: true
+        requests_per_second: 100
+      
+      # Data redaction
+      redaction:
+        enabled: true
+        redact_headers:
+          - authorization
+          - cookie
+          - x-api-key
+        redact_bodies: true
+        max_body_length: 1000
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-debugger-envoy-config
+  namespace: gateway-debugger
+data:
+  patch-access-logs.yaml: |
+    # Patch to add access logs to EnvoyProxy
+    apiVersion: gateway.envoyproxy.io/v1alpha1
+    kind: EnvoyProxy
+    metadata:
+      name: default
+      namespace: envoy-gateway-system
+    spec:
+      telemetry:
+        accessLog:
+          settings:
+          - format: |
+              {
+                "timestamp": "%START_TIME%",
+                "request_id": "%REQ(X-REQUEST-ID)%",
+                "client_address": "%CLIENT_IP%",
+                "method": "%REQ(:METHOD)%",
+                "path": "%REQ(:PATH)%",
+                "protocol": "%PROTOCOL%",
+                "status_code": "%RESPONSE_CODE%",
+                "response_flags": "%RESPONSE_FLAGS%",
+                "duration_ms": "%DURATION%",
+                "request_size": "%BYTES_RECEIVED%",
+                "response_size": "%BYTES_SENT%",
+                "upstream_host": "%UPSTREAM_HOST%",
+                "upstream_cluster": "%UPSTREAM_CLUSTER%",
+                "user_agent": "%REQ(USER-AGENT)%",
+                "referer": "%REQ(REFERER)%"
+              }
+            sinks:
+            - type: File
+              file:
+                path: "/dev/stdout"
+  
+  patch-tracing.yaml: |
+    # Patch to add tracing to EnvoyProxy
+    apiVersion: gateway.envoyproxy.io/v1alpha1
+    kind: EnvoyProxy
+    metadata:
+      name: default
+      namespace: envoy-gateway-system
+    spec:
+      telemetry:
+        tracing:
+          samplingRate: 100
+          provider:
+            name: jaeger
+            backendRefs:
+            - name: jaeger-collector
+              namespace: monitoring
+              port: 14268

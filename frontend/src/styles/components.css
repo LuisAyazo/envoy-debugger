@@ -1,0 +1,72 @@
+.card {
+  @apply bg-gray-800 border border-gray-700 rounded-lg;
+}
+
+.card-header {
+  @apply border-b border-gray-700 p-4;
+}
+
+.card-body {
+  @apply p-4;
+}
+
+.btn {
+  @apply px-4 py-2 rounded font-medium transition;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply bg-gray-700 text-gray-100 hover:bg-gray-600;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700;
+}
+
+.input {
+  @apply bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:outline-none;
+}
+
+.select {
+  @apply input;
+}
+
+.badge {
+  @apply inline-block px-2 py-1 text-xs font-medium rounded;
+}
+
+.badge-success {
+  @apply bg-green-900 text-green-400;
+}
+
+.badge-danger {
+  @apply bg-red-900 text-red-400;
+}
+
+.badge-warning {
+  @apply bg-yellow-900 text-yellow-400;
+}
+
+.badge-info {
+  @apply bg-blue-900 text-blue-400;
+}
+
+.table {
+  @apply w-full text-sm;
+}
+
+.table thead {
+  @apply border-b border-gray-700 bg-gray-700/30;
+}
+
+.table tbody tr {
+  @apply border-b border-gray-700 hover:bg-gray-700/20 transition;
+}
+
+.table th,
+.table td {
+  @apply py-3 px-4 text-left;
+}

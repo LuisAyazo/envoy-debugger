@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply selection:bg-blue-500 selection:text-white;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded hover:bg-gray-500;
+}

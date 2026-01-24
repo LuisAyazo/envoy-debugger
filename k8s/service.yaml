@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-debugger-backend
+  namespace: gateway-debugger
+  labels:
+    app: gateway-debugger
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: gateway-debugger
+    component: backend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-debugger-frontend
+  namespace: gateway-debugger
+  labels:
+    app: gateway-debugger
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: gateway-debugger
+    component: frontend
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-debugger
+  namespace: gateway-debugger
+  labels:
+    app: gateway-debugger
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway-debugger
+    component: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  - name: api
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
