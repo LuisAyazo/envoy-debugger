@@ -1,0 +1,241 @@
+# Makefile for Gateway Debugger with OpenTelemetry Stack
+# Este Makefile facilita el deployment y gestión del stack completo
+
+.PHONY: help up down restart logs clean build test health dashboard
+
+# Variables
+COMPOSE_FILE := docker-compose-otel.yml
+BACKEND_DIR := backend
+FRONTEND_DIR := frontend
+
+# Colors para output
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
+
+##@ General
+
+help: ## Mostrar esta ayuda
+	@echo "$(GREEN)Gateway Debugger - OpenTelemetry Stack$(NC)"
+	@echo ""
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make $(YELLOW)<target>$(NC)\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(GREEN)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+##@ Development
+
+up: ## Levantar todo el stack
+	@echo "$(GREEN)🚀 Levantando stack de observabilidad...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) up -d
+	@echo "$(GREEN)✅ Stack iniciado$(NC)"
+	@make health
+
+up-observability: ## Levantar solo servicios de observabilidad (sin backend/frontend)
+	@echo "$(GREEN)🚀 Levantando servicios de observabilidad...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) up -d otel-collector jaeger prometheus loki tempo grafana
+	@echo "$(GREEN)✅ Servicios de observabilidad iniciados$(NC)"
+
+down: ## Detener todo el stack
+	@echo "$(YELLOW)⏹️  Deteniendo stack...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) down
+	@echo "$(GREEN)✅ Stack detenido$(NC)"
+
+restart: ## Reiniciar todo el stack
+	@echo "$(YELLOW)🔄 Reiniciando stack...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) restart
+	@echo "$(GREEN)✅ Stack reiniciado$(NC)"
+
+restart-collector: ## Reiniciar solo el OTel Collector
+	@echo "$(YELLOW)🔄 Reiniciando OTel Collector...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) restart otel-collector
+	@echo "$(GREEN)✅ OTel Collector reiniciado$(NC)"
+
+logs: ## Ver logs de todos los servicios
+	docker-compose -f $(COMPOSE_FILE) logs -f
+
+logs-collector: ## Ver logs del OTel Collector
+	docker-compose -f $(COMPOSE_FILE) logs -f otel-collector
+
+logs-backend: ## Ver logs del backend
+	docker-compose -f $(COMPOSE_FILE) logs -f backend
+
+logs-grafana: ## Ver logs de Grafana
+	docker-compose -f $(COMPOSE_FILE) logs -f grafana
+
+##@ Build
+
+build: ## Build de todos los servicios
+	@echo "$(GREEN)🔨 Building servicios...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) build
+	@echo "$(GREEN)✅ Build completado$(NC)"
+
+build-backend: ## Build solo del backend
+	@echo "$(GREEN)🔨 Building backend...$(NC)"
+	cd $(BACKEND_DIR) && go build -o debugger cmd/debugger/main.go
+	@echo "$(GREEN)✅ Backend build completado$(NC)"
+
+build-frontend: ## Build solo del frontend
+	@echo "$(GREEN)🔨 Building frontend...$(NC)"
+	cd $(FRONTEND_DIR) && npm run build
+	@echo "$(GREEN)✅ Frontend build completado$(NC)"
+
+##@ Health & Status
+
+health: ## Verificar health de todos los servicios
+	@echo "$(GREEN)🏥 Verificando health de servicios...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)OTel Collector:$(NC)"
+	@curl -s http://localhost:13133/ > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Jaeger:$(NC)"
+	@curl -s http://localhost:14269/ > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Prometheus:$(NC)"
+	@curl -s http://localhost:9090/-/healthy > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Loki:$(NC)"
+	@curl -s http://localhost:3100/ready > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Tempo:$(NC)"
+	@curl -s http://localhost:3200/ready > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Grafana:$(NC)"
+	@curl -s http://localhost:3001/api/health > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+	@echo "$(YELLOW)Backend:$(NC)"
+	@curl -s http://localhost:8080/health > /dev/null && echo "  $(GREEN)✅ Healthy$(NC)" || echo "  $(RED)❌ Unhealthy$(NC)"
+
+ps: ## Ver status de contenedores
+	docker-compose -f $(COMPOSE_FILE) ps
+
+stats: ## Ver estadísticas de recursos
+	docker stats --no-stream
+
+##@ Testing
+
+test-traffic: ## Generar tráfico de prueba
+	@echo "$(GREEN)🚀 Generando tráfico de prueba...$(NC)"
+	@for i in {1..100}; do \
+		curl -s http://localhost:8080/api/traces > /dev/null; \
+		curl -s http://localhost:8080/api/metrics > /dev/null; \
+		echo "Request $$i enviado"; \
+		sleep 0.1; \
+	done
+	@echo "$(GREEN)✅ Tráfico generado$(NC)"
+
+test-backend: ## Ejecutar tests del backend
+	@echo "$(GREEN)🧪 Ejecutando tests del backend...$(NC)"
+	cd $(BACKEND_DIR) && go test ./... -v
+
+test-integration: ## Ejecutar tests de integración
+	@echo "$(GREEN)🧪 Ejecutando tests de integración...$(NC)"
+	@./scripts/integration-tests.sh
+
+##@ Dashboards & UI
+
+dashboard: ## Abrir todos los dashboards en el navegador
+	@echo "$(GREEN)📊 Abriendo dashboards...$(NC)"
+	@open http://localhost:3001 || xdg-open http://localhost:3001 || echo "Grafana: http://localhost:3001"
+	@open http://localhost:16686 || xdg-open http://localhost:16686 || echo "Jaeger: http://localhost:16686"
+	@open http://localhost:9090 || xdg-open http://localhost:9090 || echo "Prometheus: http://localhost:9090"
+
+grafana: ## Abrir Grafana
+	@open http://localhost:3001 || xdg-open http://localhost:3001 || echo "Grafana: http://localhost:3001 (admin/admin)"
+
+jaeger: ## Abrir Jaeger UI
+	@open http://localhost:16686 || xdg-open http://localhost:16686 || echo "Jaeger: http://localhost:16686"
+
+prometheus: ## Abrir Prometheus UI
+	@open http://localhost:9090 || xdg-open http://localhost:9090 || echo "Prometheus: http://localhost:9090"
+
+zpages: ## Abrir OTel Collector zPages
+	@open http://localhost:55679/debug/tracez || xdg-open http://localhost:55679/debug/tracez || echo "zPages: http://localhost:55679/debug/tracez"
+
+##@ Cleanup
+
+clean: ## Limpiar contenedores, volúmenes y datos
+	@echo "$(RED)🧹 Limpiando todo...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) down -v
+	@echo "$(GREEN)✅ Limpieza completada$(NC)"
+
+clean-volumes: ## Limpiar solo volúmenes
+	@echo "$(RED)🧹 Limpiando volúmenes...$(NC)"
+	docker-compose -f $(COMPOSE_FILE) down -v
+	@echo "$(GREEN)✅ Volúmenes limpiados$(NC)"
+
+clean-logs: ## Limpiar archivos de logs
+	@echo "$(RED)🧹 Limpiando logs...$(NC)"
+	rm -rf logs/*
+	@echo "$(GREEN)✅ Logs limpiados$(NC)"
+
+prune: ## Limpiar todo Docker (CUIDADO!)
+	@echo "$(RED)⚠️  ADVERTENCIA: Esto eliminará TODOS los contenedores, imágenes y volúmenes no usados$(NC)"
+	@read -p "¿Estás seguro? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker system prune -a --volumes -f; \
+		echo "$(GREEN)✅ Limpieza completa$(NC)"; \
+	fi
+
+##@ Configuration
+
+config-validate: ## Validar configuraciones
+	@echo "$(GREEN)✅ Validando configuraciones...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) config > /dev/null && echo "  $(GREEN)✅ docker-compose-otel.yml válido$(NC)" || echo "  $(RED)❌ docker-compose-otel.yml inválido$(NC)"
+	@promtool check config prometheus-otel.yml > /dev/null 2>&1 && echo "  $(GREEN)✅ prometheus-otel.yml válido$(NC)" || echo "  $(YELLOW)⚠️  promtool no disponible$(NC)"
+
+config-show: ## Mostrar configuración final de docker-compose
+	docker-compose -f $(COMPOSE_FILE) config
+
+##@ Monitoring
+
+metrics: ## Ver métricas del OTel Collector
+	@curl -s http://localhost:8888/metrics | grep -E "otelcol_receiver|otelcol_exporter|otelcol_processor"
+
+traces-count: ## Contar traces en Jaeger
+	@curl -s "http://localhost:16686/api/services" | jq '.data | length'
+
+##@ Development Helpers
+
+dev-backend: ## Correr backend en modo desarrollo (fuera de Docker)
+	@echo "$(GREEN)🔧 Iniciando backend en modo desarrollo...$(NC)"
+	cd $(BACKEND_DIR) && OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 go run cmd/debugger/main.go
+
+dev-frontend: ## Correr frontend en modo desarrollo
+	@echo "$(GREEN)🔧 Iniciando frontend en modo desarrollo...$(NC)"
+	cd $(FRONTEND_DIR) && npm run dev
+
+install-deps: ## Instalar dependencias
+	@echo "$(GREEN)📦 Instalando dependencias...$(NC)"
+	cd $(BACKEND_DIR) && go mod download
+	cd $(FRONTEND_DIR) && npm install
+	@echo "$(GREEN)✅ Dependencias instaladas$(NC)"
+
+##@ Quick Start
+
+quickstart: ## Setup completo desde cero
+	@echo "$(GREEN)🚀 Quick Start - Gateway Debugger$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1. Instalando dependencias...$(NC)"
+	@make install-deps
+	@echo ""
+	@echo "$(YELLOW)2. Levantando stack...$(NC)"
+	@make up
+	@echo ""
+	@echo "$(YELLOW)3. Esperando que servicios estén listos...$(NC)"
+	@sleep 10
+	@echo ""
+	@echo "$(YELLOW)4. Verificando health...$(NC)"
+	@make health
+	@echo ""
+	@echo "$(GREEN)✅ Quick Start completado!$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Accede a:$(NC)"
+	@echo "  - Grafana: http://localhost:3001 (admin/admin)"
+	@echo "  - Jaeger: http://localhost:16686"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo ""
+	@echo "$(YELLOW)Siguiente paso:$(NC) make test-traffic"
+
+##@ Documentation
+
+docs: ## Ver documentación
+	@echo "$(GREEN)📚 Documentación disponible:$(NC)"
+	@echo "  - OTEL_OBSERVABILITY_COMPLETE_ARCHITECTURE.md"
+	@echo "  - IMPLEMENTATION_GUIDE.md"
+	@echo "  - README.md"
+
+.DEFAULT_GOAL := help

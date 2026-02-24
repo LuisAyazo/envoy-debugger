@@ -1,0 +1,342 @@
+# OpenTelemetry Collector Configuration
+# Complete configuration for Gateway Debugger observability
+
+receivers:
+  # OTLP receiver for traces, metrics, and logs
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+  # Jaeger receiver for legacy compatibility
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14250
+      thrift_http:
+        endpoint: 0.0.0.0:14268
+      thrift_compact:
+        endpoint: 0.0.0.0:6831
+
+  # Prometheus receiver to scrape metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+        
+        - job_name: 'debugger-backend'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['debugger-backend:8080']
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              regex: 'go_.*'
+              action: drop
+        
+        - job_name: 'envoy-gateway'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['envoy-gateway:9901']
+          metrics_path: '/stats/prometheus'
+
+  # File log receiver for Envoy access logs
+  filelog:
+    include:
+      - /var/log/envoy/access.log
+    include_file_path: true
+    include_file_name: false
+    operators:
+      - type: json_parser
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+      - type: move
+        from: attributes.request_id
+        to: resource["request.id"]
+      - type: move
+        from: attributes.method
+        to: attributes["http.method"]
+      - type: move
+        from: attributes.path
+        to: attributes["http.target"]
+
+processors:
+  # Batch processor for performance
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Resource processor to add metadata
+  resource:
+    attributes:
+      - key: service.name
+        value: gateway-debugger
+        action: upsert
+      - key: deployment.environment
+        value: ${env:ENVIRONMENT}
+        action: insert
+      - key: service.version
+        value: "1.0.0"
+        action: insert
+
+  # Resource detection for K8s metadata
+  resourcedetection:
+    detectors: [env, system, docker]
+    timeout: 5s
+    override: false
+
+  # Attributes processor to enrich spans
+  attributes:
+    actions:
+      - key: http.route
+        action: insert
+        from_attribute: http.target
+      - key: request_id
+        action: insert
+        from_attribute: http.request.header.x-request-id
+      - key: user_agent
+        action: insert
+        from_attribute: http.user_agent
+      - key: client_ip
+        action: insert
+        from_attribute: http.client_ip
+
+  # Span metrics processor - generates RED metrics from traces
+  spanmetrics:
+    metrics_exporter: prometheus
+    latency_histogram_buckets: [2ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s, 10s]
+    dimensions:
+      - name: http.method
+        default: GET
+      - name: http.status_code
+      - name: http.route
+      - name: service.name
+    dimensions_cache_size: 1000
+    aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
+
+  # Tail sampling for intelligent trace sampling
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100
+    expected_new_traces_per_sec: 10
+    policies:
+      # Always sample errors
+      - name: errors-policy
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      
+      # Always sample slow requests
+      - name: slow-requests
+        type: latency
+        latency:
+          threshold_ms: 1000
+      
+      # Sample 100% of 4xx errors
+      - name: client-errors
+        type: numeric_attribute
+        numeric_attribute:
+          key: http.status_code
+          min_value: 400
+          max_value: 499
+      
+      # Sample 100% of 5xx errors
+      - name: server-errors
+        type: numeric_attribute
+        numeric_attribute:
+          key: http.status_code
+          min_value: 500
+          max_value: 599
+      
+      # Sample specific routes at 100%
+      - name: critical-routes
+        type: string_attribute
+        string_attribute:
+          key: http.route
+          values:
+            - /api/v1/traces
+            - /api/v1/metrics
+            - /health
+      
+      # Probabilistic sampling for everything else
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+  # Filter processor to drop unwanted data
+  filter:
+    traces:
+      span:
+        - 'attributes["http.target"] == "/health"'
+        - 'attributes["http.target"] == "/metrics"'
+
+  # Transform processor for data manipulation
+  transform:
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["custom.processed"], true)
+          - set(attributes["environment"], resource.attributes["deployment.environment"])
+
+exporters:
+  # OTLP exporter to Tempo (primary trace backend)
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Jaeger exporter (secondary/backup)
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # OTLP HTTP exporter to debugger backend
+  otlphttp/debugger:
+    endpoint: http://debugger-backend:8080/v1/traces
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: gateway
+    const_labels:
+      environment: ${env:ENVIRONMENT}
+    send_timestamps: true
+    metric_expiration: 5m
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Loki exporter for logs
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    labels:
+      resource:
+        service.name: "service_name"
+        deployment.environment: "environment"
+      attributes:
+        http.method: "method"
+        http.status_code: "status_code"
+    tenant_id: "gateway-debugger"
+
+  # Logging exporter for debugging
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # File exporter for backup
+  file:
+    path: /var/log/otel/traces.json
+    rotation:
+      max_megabytes: 100
+      max_days: 3
+      max_backups: 3
+
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: /
+    check_collector_pipeline:
+      enabled: true
+      interval: 5s
+      exporter_failure_threshold: 5
+
+  # Performance profiler
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zPages for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+  # Memory ballast for stability
+  memory_ballast:
+    size_mib: 64
+
+service:
+  extensions: [health_check, pprof, zpages, memory_ballast]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp, jaeger]
+      processors: 
+        - memory_limiter
+        - resource
+        - resourcedetection
+        - attributes
+        - filter
+        - transform
+        - batch
+        - tail_sampling
+        - spanmetrics
+      exporters: [otlp/tempo, jaeger, otlphttp/debugger, logging]
+    
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus]
+      processors:
+        - memory_limiter
+        - resource
+        - resourcedetection
+        - batch
+      exporters: [prometheus, logging]
+    
+    # Logs pipeline
+    logs:
+      receivers: [otlp, filelog]
+      processors:
+        - memory_limiter
+        - resource
+        - resourcedetection
+        - attributes
+        - batch
+      exporters: [loki, logging]
+
+  # Telemetry configuration for the collector itself
+  telemetry:
+    logs:
+      level: debug
+      development: true
+      encoding: json
+      output_paths:
+        - stdout
+        - /var/log/otel/collector.log
+    
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
+    
+    traces:
+      processors: [batch]

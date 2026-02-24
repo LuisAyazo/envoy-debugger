@@ -1,0 +1,134 @@
+# Prometheus configuration for Gateway Debugger with OpenTelemetry
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'gateway-debugger'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alerts/*.yml"
+  # - "recording_rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # OpenTelemetry Collector metrics
+  - job_name: 'otel-collector'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['otel-collector:8888']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'otelcol_.*'
+        action: keep
+
+  # OpenTelemetry Collector Prometheus exporter
+  - job_name: 'otel-collector-prometheus-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['otel-collector:8889']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'otel-collector'
+
+  # Gateway Debugger Backend
+  - job_name: 'debugger-backend'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['backend:8080']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'debugger-backend'
+    metric_relabel_configs:
+      # Drop Go runtime metrics to reduce cardinality
+      - source_labels: [__name__]
+        regex: 'go_(gc_duration_seconds|goroutines|info|memstats_.*)'
+        action: drop
+
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['jaeger:14269']
+    metrics_path: '/metrics'
+
+  # Loki metrics
+  - job_name: 'loki'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: '/metrics'
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: '/metrics'
+
+  # Redis metrics (if using redis_exporter)
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis:6379']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'redis_.*'
+        action: keep
+
+  # Tempo metrics
+  - job_name: 'tempo'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['tempo:3200']
+    metrics_path: '/metrics'
+
+  # Envoy Gateway metrics (when available)
+  - job_name: 'envoy-gateway'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['envoy-gateway:9901']
+    metrics_path: '/stats/prometheus'
+    metric_relabel_configs:
+      # Keep only important Envoy metrics
+      - source_labels: [__name__]
+        regex: 'envoy_(http|cluster|listener)_.*'
+        action: keep
+      # Drop high cardinality metrics
+      - source_labels: [__name__]
+        regex: '.*bucket'
+        action: drop
+
+# Remote write configuration (optional - for long-term storage)
+# remote_write:
+#   - url: "http://cortex:9009/api/prom/push"
+#     queue_config:
+#       capacity: 10000
+#       max_shards: 50
+#       min_shards: 1
+#       max_samples_per_send: 5000
+#       batch_send_deadline: 5s
+#       min_backoff: 30ms
+#       max_backoff: 100ms
+
+# Remote read configuration (optional)
+# remote_read:
+#   - url: "http://cortex:9009/api/prom/read"
+#     read_recent: true
