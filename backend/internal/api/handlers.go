@@ -3,51 +3,210 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"gateway-debugger/internal/storage"
+
+	"github.com/gin-gonic/gin"
 )
 
+// Handler maneja los endpoints HTTP del Gateway Debugger.
+// Expone dos conjuntos de endpoints:
+//  1. /api/requests/* - RequestTrace correlacionados (nuevo sistema)
+//  2. /api/traces/*   - Traces legacy (compatibilidad hacia atrás)
 type Handler struct {
-	store *storage.MemoryStore
+	store        *storage.MemoryStore
+	requestStore *storage.RequestStore
 }
 
+// NewHandler crea un handler con solo el MemoryStore legacy
 func NewHandler(store *storage.MemoryStore) *Handler {
 	return &Handler{
 		store: store,
 	}
 }
 
-// GetTraces returns all traces
+// NewHandlerWithRequestStore crea un handler con ambos stores
+func NewHandlerWithRequestStore(store *storage.MemoryStore, requestStore *storage.RequestStore) *Handler {
+	return &Handler{
+		store:        store,
+		requestStore: requestStore,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RequestTrace endpoints (nuevo sistema de correlación)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GetRequests retorna los últimos N RequestTrace correlacionados
+// GET /api/requests?limit=50
+func (h *Handler) GetRequests(c *gin.Context) {
+	if h.requestStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "request store not initialized"})
+		return
+	}
+
+	limit := getQueryInt(c, "limit", 50)
+	if limit > 500 {
+		limit = 500
+	}
+
+	traces := h.requestStore.List(limit)
+	c.JSON(http.StatusOK, gin.H{
+		"requests": traces,
+		"count":    len(traces),
+	})
+}
+
+// GetRequestByID retorna un RequestTrace por request_id
+// GET /api/requests/:id
+func (h *Handler) GetRequestByID(c *gin.Context) {
+	if h.requestStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "request store not initialized"})
+		return
+	}
+
+	id := c.Param("id")
+	rt, ok := h.requestStore.Get(id)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "request not found", "request_id": id})
+		return
+	}
+	c.JSON(http.StatusOK, rt)
+}
+
+// SearchRequests busca RequestTrace por método, path y status code
+// GET /api/requests/search?method=GET&path=/api/v1/foo&min_status=400&max_status=599
+func (h *Handler) SearchRequests(c *gin.Context) {
+	if h.requestStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "request store not initialized"})
+		return
+	}
+
+	method := strings.ToUpper(c.Query("method"))
+	path := c.Query("path")
+	minStatus := getQueryInt(c, "min_status", 0)
+	maxStatus := getQueryInt(c, "max_status", 0)
+
+	results := h.requestStore.Search(method, path, minStatus, maxStatus)
+	c.JSON(http.StatusOK, gin.H{
+		"requests": results,
+		"count":    len(results),
+	})
+}
+
+// GetRequestStats retorna estadísticas del store de requests
+// GET /api/requests/stats
+func (h *Handler) GetRequestStats(c *gin.Context) {
+	if h.requestStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "request store not initialized"})
+		return
+	}
+
+	stats := h.requestStore.Stats()
+	c.JSON(http.StatusOK, stats)
+}
+
+// GetRequestFlow retorna el flujo de fases de un request específico
+// GET /api/requests/:id/flow
+func (h *Handler) GetRequestFlow(c *gin.Context) {
+	if h.requestStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "request store not initialized"})
+		return
+	}
+
+	id := c.Param("id")
+	rt, ok := h.requestStore.Get(id)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "request not found", "request_id": id})
+		return
+	}
+
+	// Construir respuesta de flujo enriquecida
+	flow := buildFlowResponse(rt)
+	c.JSON(http.StatusOK, flow)
+}
+
+// buildFlowResponse construye la respuesta de flujo para el frontend
+func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
+	phases := make([]map[string]interface{}, 0, len(rt.Phases))
+	for _, p := range rt.Phases {
+		phase := map[string]interface{}{
+			"phase":     p.Phase,
+			"event":     p.Event,
+			"timestamp": p.Timestamp,
+		}
+		if p.Request != nil {
+			phase["request"] = p.Request
+		}
+		if len(p.HeadersBefore) > 0 {
+			phase["headers_before"] = p.HeadersBefore
+		}
+		if len(p.HeadersAfter) > 0 {
+			phase["headers_after"] = p.HeadersAfter
+		}
+		if len(p.JWTClaims) > 0 {
+			phase["jwt_claims"] = p.JWTClaims
+		}
+		phases = append(phases, phase)
+	}
+
+	return map[string]interface{}{
+		"request_id":          rt.RequestID,
+		"trace_id":            rt.TraceID,
+		"traceparent":         rt.Traceparent,
+		"method":              rt.Method,
+		"path":                rt.Path,
+		"authority":           rt.Authority,
+		"status_code":         rt.StatusCode,
+		"duration_ms":         rt.DurationMs,
+		"start_time":          rt.StartTime,
+		"end_time":            rt.EndTime,
+		"upstream_host":       rt.UpstreamHost,
+		"upstream_cluster":    rt.UpstreamCluster,
+		"response_flags":      rt.ResponseFlags,
+		"downstream_ip":       rt.DownstreamIP,
+		"jwt_claims":          rt.JWTClaims,
+		"phases":              phases,
+		"errors":              rt.Errors,
+		"access_log_received": rt.AccessLogReceived,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy endpoints (compatibilidad hacia atrás con el frontend existente)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GetTraces returns all traces (legacy)
 func (h *Handler) GetTraces(c *gin.Context) {
 	limit := getQueryInt(c, "limit", 100)
 	traces := h.store.GetAllTraces()
-	
+
 	// Apply limit
 	if len(traces) > limit {
 		traces = traces[:limit]
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"traces": traces,
 		"count":  len(traces),
 	})
 }
 
-// CreateTrace creates a new trace
+// CreateTrace creates a new trace (legacy)
 func (h *Handler) CreateTrace(c *gin.Context) {
 	var trace storage.Trace
 	if err := c.BindJSON(&trace); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Set timestamp if not provided
 	if trace.Timestamp.IsZero() {
 		trace.Timestamp = time.Now()
 	}
-	
+
 	h.store.StoreTrace(&trace)
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "trace created",
@@ -55,7 +214,7 @@ func (h *Handler) CreateTrace(c *gin.Context) {
 	})
 }
 
-// GetTraceByID returns a trace by ID
+// GetTraceByID returns a trace by ID (legacy)
 func (h *Handler) GetTraceByID(c *gin.Context) {
 	id := c.Param("id")
 	trace := h.store.GetTrace(id)
@@ -66,7 +225,7 @@ func (h *Handler) GetTraceByID(c *gin.Context) {
 	c.JSON(http.StatusOK, trace)
 }
 
-// GetMetrics returns all metrics
+// GetMetrics returns all metrics (legacy)
 func (h *Handler) GetMetrics(c *gin.Context) {
 	metrics := h.store.GetAllMetrics()
 	c.JSON(http.StatusOK, gin.H{
@@ -75,29 +234,29 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 	})
 }
 
-// CreateMetric creates a new metric
+// CreateMetric creates a new metric (legacy)
 func (h *Handler) CreateMetric(c *gin.Context) {
 	var metric storage.MetricPoint
 	if err := c.BindJSON(&metric); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if metric.Timestamp.IsZero() {
 		metric.Timestamp = time.Now()
 	}
-	
+
 	h.store.StoreMetric(&metric)
 	c.JSON(http.StatusCreated, gin.H{"message": "metric created"})
 }
 
-// GetLogs returns all logs
+// GetLogs returns all logs (legacy)
 func (h *Handler) GetLogs(c *gin.Context) {
 	limit := getQueryInt(c, "limit", 100)
 	level := c.Query("level")
-	
+
 	logs := h.store.GetAllLogs()
-	
+
 	// Filter by level if provided
 	if level != "" {
 		filtered := []storage.LogEntry{}
@@ -108,61 +267,32 @@ func (h *Handler) GetLogs(c *gin.Context) {
 		}
 		logs = filtered
 	}
-	
+
 	// Apply limit
 	if len(logs) > limit {
 		logs = logs[:limit]
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"logs":  logs,
 		"count": len(logs),
 	})
 }
 
-// CreateLog creates a new log entry
+// CreateLog creates a new log entry (legacy)
 func (h *Handler) CreateLog(c *gin.Context) {
 	var log storage.LogEntry
 	if err := c.BindJSON(&log); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if log.Timestamp.IsZero() {
 		log.Timestamp = time.Now()
 	}
-	
+
 	h.store.StoreLog(&log)
 	c.JSON(http.StatusCreated, gin.H{"message": "log created"})
-}
-
-// GetRequestFlow returns the request flow for a trace
-func (h *Handler) GetRequestFlow(c *gin.Context) {
-	traceID := c.Param("trace-id")
-	trace := h.store.GetTrace(traceID)
-	if trace == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "trace not found"})
-		return
-	}
-	
-	// Build flow steps from spans
-	flow := []map[string]interface{}{}
-	for _, span := range trace.Spans {
-		step := map[string]interface{}{
-			"span_id":   span.SpanID,
-			"operation": span.OperationName,
-			"duration":  span.Duration.Milliseconds(),
-			"status":    span.Status,
-			"tags":      span.Tags,
-		}
-		flow = append(flow, step)
-	}
-	
-	c.JSON(http.StatusOK, gin.H{
-		"trace_id": traceID,
-		"flow":     flow,
-		"count":    len(flow),
-	})
 }
 
 // Helper functions
