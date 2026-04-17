@@ -522,16 +522,34 @@ export default function RequestsPage() {
                           <div className="text-[10px] text-muted-foreground">fases</div>
                         </div>
 
-                        {/* JWT badge */}
+                        {/* JWT badge — muestra cuántos tokens JWT tiene el request */}
                         {(() => {
-                          const hasJwtClaims = req.jwt_claims && Object.keys(req.jwt_claims).length > 0;
-                          const hasJwtInHeaders = req.request_headers && Object.values(req.request_headers).some(v =>
-                            typeof v === "string" && (v.startsWith("Bearer ") || (v.split(".").length === 3 && v.length > 50))
-                          );
-                          if (!hasJwtClaims && !hasJwtInHeaders) return null;
+                          const hdrs = req.request_headers ?? {};
+                          const hasAuth = typeof hdrs["authorization"] === "string" &&
+                            hdrs["authorization"].toLowerCase().startsWith("bearer ");
+                          const hasUserToken = typeof hdrs["x-vix-user-token"] === "string" &&
+                            hdrs["x-vix-user-token"].split(".").length === 3 &&
+                            hdrs["x-vix-user-token"].length > 50;
+
+                          // Fallback: detectar por jwt_claims si no hay headers
+                          const claims = req.jwt_claims ?? {};
+                          const hasBeforeAuth = Object.keys(claims).some(k => k.startsWith("beforeauth_"));
+                          const hasAfterAuth = Object.keys(claims).some(k => k.startsWith("afterauth_"));
+
+                          const authCount = (hasAuth || hasBeforeAuth ? 1 : 0) + (hasUserToken || hasAfterAuth ? 1 : 0);
+
+                          if (authCount === 0) return null;
+
+                          if (authCount === 2) {
+                            return (
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700" title="Authorization + x-vix-user-token">
+                                2JWT
+                              </span>
+                            );
+                          }
                           return (
-                            <span className="px-2 py-0.5 rounded text-xs font-semibold badge-warning">
-                              JWT ✓
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700" title={hasAuth || hasBeforeAuth ? "Solo Authorization" : "Solo x-vix-user-token"}>
+                              1JWT
                             </span>
                           );
                         })()}

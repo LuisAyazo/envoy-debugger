@@ -546,51 +546,63 @@ export default function FlowPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="flex flex-wrap items-center gap-2"
+          className="relative z-10 bg-gray-50 dark:bg-card border border-gray-300 dark:border-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 shadow-md"
         >
-          <ViewTab icon={<Layers className="w-4 h-4" />} label="Fases Lua" active={selectedView === "phases"} onClick={() => setSelectedView("phases")} />
-          <ViewTab icon={<BarChart3 className="w-4 h-4" />} label="Raw JSON" active={selectedView === "raw"} onClick={() => setSelectedView("raw")} />
+          {/* Vista tabs — izquierda, con fondo gris visible */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-muted border border-gray-200 dark:border-border rounded-lg p-1">
+            <ViewTab icon={<Layers className="w-4 h-4" />} label="Fases Lua" active={selectedView === "phases"} onClick={() => setSelectedView("phases")} />
+            <ViewTab icon={<BarChart3 className="w-4 h-4" />} label="Raw JSON" active={selectedView === "raw"} onClick={() => setSelectedView("raw")} />
+          </div>
+
+          {/* Separador vertical */}
+          <div className="h-7 w-px bg-gray-200 dark:bg-border hidden sm:block mx-1" />
 
           <div className="flex-1" />
 
-          {/* Sensitive toggle */}
-          <button
-            onClick={() => setShowSensitive(s => !s)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              showSensitive
-                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-            title={showSensitive ? "Ocultar valores sensibles" : "Mostrar valores sensibles"}
-          >
-            {showSensitive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>{showSensitive ? "Sensibles visibles" : "Sensibles ocultos"}</span>
-          </button>
+          {/* Acciones — derecha */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Sensitive toggle */}
+            <button
+              onClick={() => setShowSensitive(s => !s)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                showSensitive
+                  ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 shadow-sm"
+                  : "bg-gray-50 dark:bg-muted text-muted-foreground border-gray-200 dark:border-border hover:text-foreground hover:bg-gray-100 dark:hover:bg-muted"
+              }`}
+              title={showSensitive ? "Ocultar valores sensibles" : "Mostrar valores sensibles"}
+            >
+              {showSensitive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              <span>{showSensitive ? "Sensibles visibles" : "Sensibles ocultos"}</span>
+            </button>
 
-          {/* Global decode toggle */}
-          <button
-            onClick={() => setGlobalDecode(d => !d)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              globalDecode
-                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-            title={globalDecode ? "Ocultar decodificación" : "Decodificar base64/JWT"}
-          >
-            <Code className="w-3.5 h-3.5" />
-            <span>{globalDecode ? "Decodificado activo" : "Decodificar todo"}</span>
-          </button>
+            {/* Global decode toggle */}
+            <button
+              onClick={() => setGlobalDecode(d => !d)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                globalDecode
+                  ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 shadow-sm"
+                  : "bg-gray-50 dark:bg-muted text-muted-foreground border-gray-200 dark:border-border hover:text-foreground hover:bg-gray-100 dark:hover:bg-muted"
+              }`}
+              title={globalDecode ? "Ocultar decodificación" : "Decodificar base64/JWT"}
+            >
+              <Code className="w-3.5 h-3.5" />
+              <span>{globalDecode ? "Decodificado activo" : "Decodificar todo"}</span>
+            </button>
 
-          {/* Global search */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Buscar header..."
-              value={globalSearch}
-              onChange={e => setGlobalSearch(e.target.value)}
-              className="input-base pl-9 w-44 py-1.5 text-sm"
-            />
+            {/* Separador vertical */}
+            <div className="h-7 w-px bg-gray-200 dark:bg-border hidden sm:block mx-1" />
+
+            {/* Global search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar header..."
+                value={globalSearch}
+                onChange={e => setGlobalSearch(e.target.value)}
+                className="input-base pl-9 w-44 py-1.5 text-sm"
+              />
+            </div>
           </div>
         </motion.div>
 
@@ -605,7 +617,7 @@ export default function FlowPage() {
             <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-muted/30">
               <GitBranch className="w-4 h-4 text-primary" />
               <h2 className="font-semibold text-foreground">Pipeline de Fases Lua</h2>
-              <span className="ml-auto text-xs text-muted-foreground">{flowData.phases?.length ?? 0} eventos</span>
+              <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">{flowData.phases?.length ?? 0} eventos</span>
             </div>
 
             {/* Timeline visual — usa índice ordinal #N cuando todos los timestamps son iguales */}
@@ -646,7 +658,7 @@ export default function FlowPage() {
             })()}
 
             {/* Event filter chips */}
-            <div className="px-5 pb-3 flex items-center gap-1.5 flex-wrap">
+            <div className="px-5 pb-4 pt-1 flex items-center gap-1.5 flex-wrap border-b border-border/50">
               <Filter className="w-3 h-3 text-muted-foreground" />
               {([
                 { key: "all", label: "Todos" },
@@ -730,7 +742,7 @@ export default function FlowPage() {
               const isFromAccessLog = sourceLabel === "access log";
 
               return (
-                <div className="px-5 pb-3">
+                <div className="px-5 pt-3 pb-3">
                   <div className="bg-background border border-border border-l-4 border-l-blue-400 dark:border-l-blue-500 rounded-xl overflow-hidden">
                     <div
                       className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
@@ -806,45 +818,73 @@ export default function FlowPage() {
               );
             })()}
 
-            {/* Fases de REQUEST (phase_start / phase_end) */}
+            {/* Fases de REQUEST — agrupadas por par START/END */}
             {flowData.phases && flowData.phases.length > 0 && (() => {
               const requestPhases = flowData.phases.filter((p: any) =>
                 p.event === "phase_start" || p.event === "phase_end"
               );
-              const filteredRequest = requestPhases.filter((p: any) => eventFilter === "all" || p.event === eventFilter);
-              if (filteredRequest.length === 0) return null;
+              if (requestPhases.length === 0) return null;
+
+              // Agrupar pares START/END por nombre de fase
+              const pairs: { start: any; end: any | null; startIdx: number }[] = [];
+              const usedIdx = new Set<number>();
+              requestPhases.forEach((phase: any) => {
+                const idx = flowData.phases.indexOf(phase);
+                if (usedIdx.has(idx)) return;
+                if (phase.event === "phase_start") {
+                  const endPhase = flowData.phases.slice(idx + 1).find((p: any) =>
+                    p.phase === phase.phase && p.event === "phase_end"
+                  );
+                  const endIdx = endPhase ? flowData.phases.indexOf(endPhase) : -1;
+                  pairs.push({ start: phase, end: endPhase ?? null, startIdx: idx });
+                  usedIdx.add(idx);
+                  if (endIdx >= 0) usedIdx.add(endIdx);
+                } else if (phase.event === "phase_end" && !usedIdx.has(idx)) {
+                  // phase_end sin start (huérfano)
+                  pairs.push({ start: phase, end: null, startIdx: idx });
+                  usedIdx.add(idx);
+                }
+              });
+
+              // Filtrar según eventFilter
+              const filteredPairs = pairs.filter(({ start, end }) => {
+                if (eventFilter === "all") return true;
+                if (eventFilter === "phase_start") return !!start && start.event === "phase_start";
+                if (eventFilter === "phase_end") return !!end;
+                return false;
+              });
+              if (filteredPairs.length === 0) return null;
+
               const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
+
               return (
-                <div className="p-6 space-y-4">
-                  {filteredRequest.map((phase: any, filteredIdx: number) => {
-                    const idx = flowData.phases.indexOf(phase);
-                    const prevPhase = idx > 0 ? flowData.phases[idx - 1] : null;
-                    const hasMorePhases = idx < flowData.phases.length - 1;
-                    const isIncomplete = phase.event === "phase_start" && hasMorePhases &&
-                      !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "phase_end");
+                <div className="px-5 pb-3 space-y-3">
+                  {filteredPairs.map(({ start, end, startIdx }, pairIdx) => {
+                    const isIncomplete = !end;
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
-                    const relMs = new Date(phase.timestamp).getTime() - t0;
+                    const relMs = new Date(start.timestamp).getTime() - t0;
                     return (
-                      <FlowStep
-                        key={idx}
-                        step={phase}
-                        index={filteredIdx}
-                        ordinal={idx + 1}
+                      <FlowPhasePair
+                        key={startIdx}
+                        phaseStart={start}
+                        phaseEnd={end}
+                        ordinal={startIdx + 1}
+                        pairIndex={pairIdx}
                         allSameTs={allSameTs}
-                        isExpanded={expandedSteps.has(idx)}
+                        relativeMs={relMs}
+                        isIncomplete={isIncomplete}
+                        isExpanded={expandedSteps.has(startIdx)}
                         onToggle={() => {
                           setExpandedSteps(prev => {
                             const next = new Set(prev);
-                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
                             return next;
                           });
                         }}
                         showSensitive={showSensitive}
                         globalDecode={globalDecode}
                         globalSearch={globalSearch}
-                        relativeMs={relMs}
-                        prevPhase={prevPhase}
-                        isIncomplete={isIncomplete}
+                        isResponse={false}
                       />
                     );
                   })}
@@ -946,45 +986,71 @@ export default function FlowPage() {
               );
             })()}
 
-            {/* Fases de RESPONSE (response_phase_start / response_phase_end) */}
+            {/* Fases de RESPONSE — agrupadas por par START/END */}
             {flowData.phases && flowData.phases.length > 0 && (() => {
               const responsePhases = flowData.phases.filter((p: any) =>
                 p.event === "response_phase_start" || p.event === "response_phase_end"
               );
-              const filteredResponse = responsePhases.filter((p: any) => eventFilter === "all" || p.event === eventFilter);
-              if (filteredResponse.length === 0) return null;
+              if (responsePhases.length === 0) return null;
+
+              // Agrupar pares RESPONSE_START/END por nombre de fase
+              const pairs: { start: any; end: any | null; startIdx: number }[] = [];
+              const usedIdx = new Set<number>();
+              responsePhases.forEach((phase: any) => {
+                const idx = flowData.phases.indexOf(phase);
+                if (usedIdx.has(idx)) return;
+                if (phase.event === "response_phase_start") {
+                  const endPhase = flowData.phases.slice(idx + 1).find((p: any) =>
+                    p.phase === phase.phase && p.event === "response_phase_end"
+                  );
+                  const endIdx = endPhase ? flowData.phases.indexOf(endPhase) : -1;
+                  pairs.push({ start: phase, end: endPhase ?? null, startIdx: idx });
+                  usedIdx.add(idx);
+                  if (endIdx >= 0) usedIdx.add(endIdx);
+                } else if (phase.event === "response_phase_end" && !usedIdx.has(idx)) {
+                  pairs.push({ start: phase, end: null, startIdx: idx });
+                  usedIdx.add(idx);
+                }
+              });
+
+              const filteredPairs = pairs.filter(({ start, end }) => {
+                if (eventFilter === "all") return true;
+                if (eventFilter === "response_phase_start") return !!start && start.event === "response_phase_start";
+                if (eventFilter === "response_phase_end") return !!end;
+                return false;
+              });
+              if (filteredPairs.length === 0) return null;
+
               const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
+
               return (
-                <div className="p-6 space-y-4">
-                  {filteredResponse.map((phase: any, filteredIdx: number) => {
-                    const idx = flowData.phases.indexOf(phase);
-                    const prevPhase = idx > 0 ? flowData.phases[idx - 1] : null;
-                    const hasMorePhases = idx < flowData.phases.length - 1;
-                    const isIncomplete = phase.event === "response_phase_start" && hasMorePhases &&
-                      !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "response_phase_end");
+                <div className="px-5 pb-3 space-y-3">
+                  {filteredPairs.map(({ start, end, startIdx }, pairIdx) => {
+                    const isIncomplete = !end;
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
-                    const relMs = new Date(phase.timestamp).getTime() - t0;
+                    const relMs = new Date(start.timestamp).getTime() - t0;
                     return (
-                      <FlowStep
-                        key={idx}
-                        step={phase}
-                        index={filteredIdx}
-                        ordinal={idx + 1}
+                      <FlowPhasePair
+                        key={startIdx}
+                        phaseStart={start}
+                        phaseEnd={end}
+                        ordinal={startIdx + 1}
+                        pairIndex={pairIdx}
                         allSameTs={allSameTs}
-                        isExpanded={expandedSteps.has(idx)}
+                        relativeMs={relMs}
+                        isIncomplete={isIncomplete}
+                        isExpanded={expandedSteps.has(startIdx)}
                         onToggle={() => {
                           setExpandedSteps(prev => {
                             const next = new Set(prev);
-                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
                             return next;
                           });
                         }}
                         showSensitive={showSensitive}
                         globalDecode={globalDecode}
                         globalSearch={globalSearch}
-                        relativeMs={relMs}
-                        prevPhase={prevPhase}
-                        isIncomplete={isIncomplete}
+                        isResponse={true}
                       />
                     );
                   })}
@@ -1724,6 +1790,348 @@ function FlowStep({
 
               {/* No headers match search */}
               {search && beforeEntries.length === 0 && afterEntries.length === 0 && (
+                <div className="text-center text-muted-foreground text-sm py-4">
+                  No hay headers que coincidan con "{globalSearch}"
+                </div>
+              )}
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─── FlowPhasePair ───────────────────────────────────────────────────────────
+// Muestra un par START/END como una sola tarjeta agrupada
+
+function FlowPhasePair({
+  phaseStart, phaseEnd, ordinal, pairIndex, allSameTs, relativeMs,
+  isIncomplete, isExpanded, onToggle,
+  showSensitive, globalDecode, globalSearch, isResponse,
+}: {
+  phaseStart: any;
+  phaseEnd: any | null;
+  ordinal: number;
+  pairIndex: number;
+  allSameTs: boolean;
+  relativeMs: number;
+  isIncomplete: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+  showSensitive: boolean;
+  globalDecode: boolean;
+  globalSearch: string;
+  isResponse: boolean;
+}) {
+  const search = globalSearch.toLowerCase().trim();
+
+  function filterHeaders(headers: Record<string, string> | null): [string, string][] {
+    if (!headers) return [];
+    const entries = Object.entries(headers);
+    if (!search) return entries;
+    return entries.filter(([k, v]) => k.toLowerCase().includes(search) || v.toLowerCase().includes(search));
+  }
+
+  function computeDiff(
+    before: Record<string, string> | null,
+    after: Record<string, string> | null
+  ) {
+    const allKeys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
+    const rows: { key: string; value: string; status: "same" | "changed" | "added" | "removed" }[] = [];
+    allKeys.forEach(k => {
+      const bv = before?.[k];
+      const av = after?.[k];
+      const bvEmpty = bv === undefined || isEmptyHeaderValue(bv);
+      const avEmpty = av === undefined || isEmptyHeaderValue(av);
+      if (bvEmpty && avEmpty) return;
+      if (bvEmpty && !avEmpty) rows.push({ key: k, value: av!, status: "added" });
+      else if (!bvEmpty && avEmpty) rows.push({ key: k, value: bv!, status: "removed" });
+      else if (bv !== av) rows.push({ key: k, value: av!, status: "changed" });
+      else rows.push({ key: k, value: av!, status: "same" });
+    });
+    return rows;
+  }
+
+  // Diff principal: headers_before del START → headers_after del END
+  // Si no hay END, usamos headers_before → headers_after del START
+  const diffBefore = phaseStart?.headers_before ?? null;
+  const diffAfter = phaseEnd?.headers_after ?? phaseStart?.headers_after ?? null;
+  const internalDiff = diffBefore || diffAfter ? computeDiff(diffBefore, diffAfter) : null;
+  const filteredDiff = internalDiff?.filter(r =>
+    !search || r.key.toLowerCase().includes(search) || r.value.toLowerCase().includes(search)
+  );
+
+  const diffCounts = internalDiff ? {
+    added: internalDiff.filter(r => r.status === "added").length,
+    changed: internalDiff.filter(r => r.status === "changed").length,
+    removed: internalDiff.filter(r => r.status === "removed").length,
+  } : null;
+
+  // Duración de la fase (ms entre start y end)
+  const durationMs = phaseStart && phaseEnd
+    ? new Date(phaseEnd.timestamp).getTime() - new Date(phaseStart.timestamp).getTime()
+    : null;
+
+  // JWT claims: preferir los del END (más completos), fallback al START
+  const jwtClaims = phaseEnd?.jwt_claims ?? phaseStart?.jwt_claims ?? null;
+
+  // Headers before (del START) y after (del END)
+  const beforeEntries = filterHeaders(phaseStart?.headers_before ?? null);
+  const afterEntries = filterHeaders(phaseEnd?.headers_after ?? phaseStart?.headers_after ?? null);
+
+  // Body del request (solo en phase_start)
+  const requestBody = phaseStart?.request_body ?? null;
+  // Body de respuesta (solo en response_phase_end)
+  const responseBody = phaseEnd?.response_body ?? null;
+  const responseBodySkipped = phaseEnd?.response_body_skipped ?? null;
+
+  // Color del borde según tipo
+  const borderColor = isIncomplete
+    ? "border-l-amber-400 dark:border-l-amber-500"
+    : isResponse
+    ? "border-l-orange-400 dark:border-l-orange-500"
+    : "border-l-blue-400 dark:border-l-blue-500";
+
+  const iconColor = isIncomplete
+    ? "text-amber-600 dark:text-amber-400"
+    : isResponse
+    ? "text-orange-600 dark:text-orange-400"
+    : "text-blue-600 dark:text-blue-400";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: pairIndex * 0.04 }}
+      className={`bg-background border border-border border-l-4 ${borderColor} rounded-xl overflow-hidden`}
+    >
+      {/* Header colapsable */}
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/40 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div>
+              {isIncomplete
+                ? <AlertTriangle className={`w-4 h-4 ${iconColor}`} />
+                : isResponse
+                ? <CheckCircle className={`w-4 h-4 ${iconColor}`} />
+                : <Play className={`w-4 h-4 ${iconColor}`} />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-foreground">
+                  {friendlyPhaseName(phaseStart?.phase ?? phaseEnd?.phase)}
+                </span>
+                {isResponse && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-warning">
+                    RESPONSE
+                  </span>
+                )}
+                {isIncomplete && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-warning">
+                    ⚠ INCOMPLETO
+                  </span>
+                )}
+                {/* Diff counts en collapsed */}
+                {!isExpanded && diffCounts && (diffCounts.added > 0 || diffCounts.changed > 0 || diffCounts.removed > 0) && (
+                  <span className="flex items-center gap-1 text-[10px] font-mono">
+                    {diffCounts.added > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{diffCounts.added}</span>}
+                    {diffCounts.changed > 0 && <span className="text-amber-600 dark:text-amber-400">~{diffCounts.changed}</span>}
+                    {diffCounts.removed > 0 && <span className="text-red-600 dark:text-red-400">-{diffCounts.removed}</span>}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  <span>{new Date(phaseStart?.timestamp ?? phaseEnd?.timestamp).toLocaleTimeString()}</span>
+                  <span className="font-mono text-foreground/60">
+                    {allSameTs ? `#${ordinal}` : `+${relativeMs}ms`}
+                  </span>
+                </div>
+                {durationMs !== null && durationMs > 0 && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    ⏱ {durationMs}ms
+                  </span>
+                )}
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${isResponse ? "badge-warning" : "badge-info"}`}>
+                  {isResponse ? "RESPONSE PHASE" : "REQUEST PHASE"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            {isExpanded
+              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Contenido expandido */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="border-t border-border bg-muted/20"
+          >
+            <div className="p-4 space-y-5">
+
+              {/* Body del Request */}
+              {requestBody && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-primary" /> Body del Request
+                    <span className="text-[10px] text-muted-foreground font-normal">{requestBody.length} bytes · JSON</span>
+                  </h4>
+                  <div className="bg-muted rounded-lg p-3 overflow-auto max-h-64 border border-border">
+                    <JsonHighlight json={(() => {
+                      try { return JSON.stringify(JSON.parse(requestBody), null, 2); } catch { return requestBody; }
+                    })()} />
+                  </div>
+                </div>
+              )}
+
+              {/* JWT Claims */}
+              {jwtClaims && Object.keys(jwtClaims).length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> JWT Claims
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {Object.entries(jwtClaims).map(([k, v]) => (
+                      <div key={k} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-3 py-2">
+                        <div className="text-[10px] text-muted-foreground mb-0.5">{k}</div>
+                        <code className="text-xs text-amber-700 dark:text-amber-400 font-mono break-all">
+                          {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                        </code>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Diff principal: headers_before (START) → headers_after (END) */}
+              {filteredDiff && filteredDiff.some(r => r.status !== "same") && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Diff className="w-3.5 h-3.5 text-muted-foreground" />
+                    {isResponse ? "Transformaciones de Response" : "Transformaciones en esta fase"}
+                    <span className="flex items-center gap-1 ml-1">
+                      {diffCounts && diffCounts.added > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-success">+{diffCounts.added}</span>}
+                      {diffCounts && diffCounts.changed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-warning">~{diffCounts.changed}</span>}
+                      {diffCounts && diffCounts.removed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-error">-{diffCounts.removed}</span>}
+                    </span>
+                  </h4>
+                  <div className="space-y-1">
+                    {filteredDiff.filter(r => r.status !== "same").map(r => (
+                      <HeaderRow
+                        key={r.key}
+                        headerKey={r.key}
+                        value={r.value}
+                        showSensitive={showSensitive}
+                        globalDecode={globalDecode}
+                        added={r.status === "added"}
+                        removed={r.status === "removed"}
+                        changed={r.status === "changed"}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Headers Before (entrada a la fase) */}
+              {beforeEntries.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                    {isResponse ? "Response Headers (entrada)" : "Request Headers (entrada)"} ({beforeEntries.length})
+                  </h4>
+                  <div className="space-y-1">
+                    {beforeEntries.map(([k, v]) => (
+                      <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Headers After (salida de la fase) */}
+              {afterEntries.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                    {isResponse ? "Response Headers (salida)" : "Request Headers (salida)"} ({afterEntries.length})
+                  </h4>
+                  <div className="space-y-1">
+                    {afterEntries.map(([k, v]) => {
+                      const bef = phaseStart?.headers_before;
+                      const isChanged = bef && bef[k] !== v;
+                      const isAdded = bef && !(k in bef);
+                      return (
+                        <HeaderRow
+                          key={k}
+                          headerKey={k}
+                          value={String(v)}
+                          showSensitive={showSensitive}
+                          globalDecode={globalDecode}
+                          changed={isChanged && !isAdded}
+                          added={isAdded}
+                        />
+                      );
+                    })}
+                    {/* Headers removidos */}
+                    {phaseStart?.headers_before && Object.entries(phaseStart.headers_before)
+                      .filter(([k]) => !afterEntries.find(([ak]) => ak === k))
+                      .map(([k, v]) => (
+                        <HeaderRow
+                          key={`removed-${k}`}
+                          headerKey={k}
+                          value={String(v)}
+                          showSensitive={showSensitive}
+                          globalDecode={globalDecode}
+                          removed={true}
+                        />
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Body de Respuesta del Upstream (solo en response phases) */}
+              {isResponse && (responseBody || responseBodySkipped) && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-muted-foreground" /> Body de Respuesta del Upstream
+                    {responseBody && (
+                      <span className="text-[10px] text-muted-foreground font-normal">{responseBody.length} bytes · JSON</span>
+                    )}
+                    {responseBodySkipped && (
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">⚠ no capturado</span>
+                    )}
+                  </h4>
+                  {responseBody ? (
+                    <div className="bg-muted rounded-lg p-3 overflow-auto max-h-96 border border-border">
+                      <JsonHighlight json={(() => {
+                        try { return JSON.stringify(JSON.parse(responseBody), null, 2); } catch { return responseBody; }
+                      })()} />
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
+                      {responseBodySkipped}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sin resultados de búsqueda */}
+              {search && beforeEntries.length === 0 && afterEntries.length === 0 && (!filteredDiff || filteredDiff.length === 0) && (
                 <div className="text-center text-muted-foreground text-sm py-4">
                   No hay headers que coincidan con "{globalSearch}"
                 </div>
