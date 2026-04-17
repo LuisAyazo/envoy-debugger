@@ -130,6 +130,19 @@ func (h *Handler) GetRequestFlow(c *gin.Context) {
 
 // buildFlowResponse construye la respuesta de flujo para el frontend
 func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
+	// Indexar los phase_start y response_phase_start por nombre de fase
+	// para poder cruzarlos con sus respectivos phase_end / response_phase_end
+	phaseStartHeaders := map[string]map[string]string{}
+	respPhaseStartHeaders := map[string]map[string]string{}
+	for _, p := range rt.Phases {
+		if p.Event == "phase_start" && len(p.HeadersBefore) > 0 {
+			phaseStartHeaders[p.Phase] = p.HeadersBefore
+		}
+		if p.Event == "response_phase_start" && len(p.HeadersBefore) > 0 {
+			respPhaseStartHeaders[p.Phase] = p.HeadersBefore
+		}
+	}
+
 	phases := make([]map[string]interface{}, 0, len(rt.Phases))
 	for _, p := range rt.Phases {
 		phase := map[string]interface{}{
@@ -145,6 +158,19 @@ func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
 		}
 		if len(p.HeadersAfter) > 0 {
 			phase["headers_after"] = p.HeadersAfter
+		}
+		// Para phase_end: inyectar headers_before del phase_start correspondiente
+		// Esto permite al frontend calcular el diff interno (qué cambió en esta fase)
+		if p.Event == "phase_end" && len(p.HeadersBefore) == 0 {
+			if startHdrs, ok := phaseStartHeaders[p.Phase]; ok {
+				phase["headers_before"] = startHdrs
+			}
+		}
+		// Para response_phase_end: inyectar headers_before del response_phase_start correspondiente
+		if p.Event == "response_phase_end" && len(p.HeadersBefore) == 0 {
+			if startHdrs, ok := respPhaseStartHeaders[p.Phase]; ok {
+				phase["headers_before"] = startHdrs
+			}
 		}
 		if len(p.JWTClaims) > 0 {
 			phase["jwt_claims"] = p.JWTClaims

@@ -198,7 +198,7 @@ export default function FlowPage() {
   const [showSensitive, setShowSensitive] = useState(true);
   const [globalDecode, setGlobalDecode] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [eventFilter, setEventFilter] = useState<"all" | "phase_start" | "phase_end" | "error">("all");
+  const [eventFilter, setEventFilter] = useState<"all" | "phase_start" | "phase_end" | "response_phase_start" | "response_phase_end" | "error">("all");
   const [clientExpanded, setClientExpanded] = useState(true);
   const [upstreamExpanded, setUpstreamExpanded] = useState(true);
 
@@ -633,6 +633,7 @@ export default function FlowPage() {
                   {flowData.phases.map((phase: any, idx: number) => {
                     const isIncomplete = phase.event === "phase_start" &&
                       !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "phase_end");
+                    const isResponse = phase.event === "response_phase_start" || phase.event === "response_phase_end";
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
                     const relMs = new Date(phase.timestamp).getTime() - t0;
                     return (
@@ -641,6 +642,8 @@ export default function FlowPage() {
                           <div className={`w-3 h-3 rounded-full border-2 ${
                             isIncomplete ? "border-yellow-400 bg-yellow-400/30" :
                             phase.event === "phase_end" ? "border-green-400 bg-green-400/30" :
+                            phase.event === "response_phase_end" ? "border-orange-400 bg-orange-400/30" :
+                            phase.event === "response_phase_start" ? "border-amber-400 bg-amber-400/30" :
                             phase.event === "error" ? "border-red-400 bg-red-400/30" :
                             "border-blue-400 bg-blue-400/30"
                           }`} />
@@ -662,17 +665,24 @@ export default function FlowPage() {
             {/* Event filter chips */}
             <div className="px-6 pb-2 flex items-center gap-2 flex-wrap">
               <Filter className="w-3 h-3 text-gray-500" />
-              {(["all", "phase_start", "phase_end", "error"] as const).map(f => (
+              {([
+                { key: "all", label: "Todos", activeClass: "bg-cyan-500/30 border-cyan-400/60 text-cyan-300" },
+                { key: "phase_start", label: "Request Start", activeClass: "bg-blue-500/30 border-blue-400/60 text-blue-300" },
+                { key: "phase_end", label: "Request End", activeClass: "bg-green-500/30 border-green-400/60 text-green-300" },
+                { key: "response_phase_start", label: "Response Start", activeClass: "bg-amber-500/30 border-amber-400/60 text-amber-300" },
+                { key: "response_phase_end", label: "Response End", activeClass: "bg-orange-500/30 border-orange-400/60 text-orange-300" },
+                { key: "error", label: "Errores", activeClass: "bg-red-500/30 border-red-400/60 text-red-300" },
+              ] as const).map(f => (
                 <button
-                  key={f}
-                  onClick={() => setEventFilter(f)}
-                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
-                    eventFilter === f
-                      ? "bg-cyan-500/30 border border-cyan-400/60 text-cyan-300"
-                      : "bg-white/5 border border-white/10 text-gray-400 hover:text-white"
+                  key={f.key}
+                  onClick={() => setEventFilter(f.key as any)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+                    eventFilter === f.key
+                      ? f.activeClass
+                      : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
                   }`}
                 >
-                  {f === "all" ? "Todos" : f}
+                  {f.label}
                 </button>
               ))}
               <div className="flex-1" />
@@ -1122,6 +1132,9 @@ function FlowStep({
 }) {
   const isError = step.event === "error";
   const isEnd = step.event === "phase_end";
+  const isResponseStart = step.event === "response_phase_start";
+  const isResponseEnd = step.event === "response_phase_end";
+  const isResponse = isResponseStart || isResponseEnd;
   const search = globalSearch.toLowerCase().trim();
 
   function filterHeaders(headers: Record<string, string> | null): [string, string][] {
@@ -1180,6 +1193,8 @@ function FlowStep({
       className={`glass rounded-xl border-l-4 ${
         isIncomplete ? "border-yellow-500/70 bg-yellow-500/5" :
         isError ? "border-red-500/50 bg-red-500/10" :
+        isResponseEnd ? "border-orange-500/50 bg-orange-500/5" :
+        isResponseStart ? "border-amber-500/50 bg-amber-500/5" :
         isEnd ? "border-green-500/50 bg-green-500/5" :
         "border-blue-500/50 bg-blue-500/5"
       } overflow-hidden`}
@@ -1194,12 +1209,19 @@ function FlowStep({
             <motion.div whileHover={{ scale: 1.2 }} transition={{ duration: 0.2 }}>
               {isIncomplete ? <AlertTriangle className="w-6 h-6 text-yellow-400" /> :
                isError ? <XCircle className="w-6 h-6 text-red-400" /> :
+               isResponseEnd ? <CheckCircle className="w-6 h-6 text-orange-400" /> :
+               isResponseStart ? <Play className="w-6 h-6 text-amber-400" /> :
                isEnd ? <CheckCircle className="w-6 h-6 text-green-400" /> :
                <Play className="w-6 h-6 text-blue-400" />}
             </motion.div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-lg text-white">{friendlyPhaseName(step.phase)}</span>
+                {isResponse && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    RESPONSE
+                  </span>
+                )}
                 {isIncomplete && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
                     ⚠ SIN PHASE_END
@@ -1224,6 +1246,8 @@ function FlowStep({
                 </div>
                 <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                   isError ? "bg-red-500/20 text-red-300" :
+                  isResponseEnd ? "bg-orange-500/20 text-orange-300" :
+                  isResponseStart ? "bg-amber-500/20 text-amber-300" :
                   isEnd ? "bg-green-500/20 text-green-300" :
                   "bg-blue-500/20 text-blue-300"
                 }`}>
@@ -1294,8 +1318,8 @@ function FlowStep({
               {/* Diff interno: headers_before → headers_after */}
               {filteredInternalDiff && filteredInternalDiff.some(r => r.status !== "same") && (
                 <div>
-                  <h4 className="text-sm font-bold text-cyan-300 mb-3 flex items-center gap-2">
-                    <Diff className="w-4 h-4" /> Transformaciones en esta fase
+                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${isResponse ? "text-orange-300" : "text-cyan-300"}`}>
+                    <Diff className="w-4 h-4" /> {isResponse ? "Transformaciones de Response" : "Transformaciones en esta fase"}
                   </h4>
                   <div className="space-y-1">
                     {filteredInternalDiff.filter(r => r.status !== "same").map(r => (
@@ -1314,11 +1338,11 @@ function FlowStep({
                 </div>
               )}
 
-              {/* Headers Before: solo mostrar en phase_start (no en phase_end donde ya se ve el diff) */}
-              {beforeEntries.length > 0 && !isEnd && (
+              {/* Headers Before: solo mostrar en phase_start / response_phase_start (no en *_end donde ya se ve el diff) */}
+              {beforeEntries.length > 0 && !isEnd && !isResponseEnd && (
                 <div>
-                  <h4 className="text-sm font-bold text-purple-300 mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4" /> Request Headers ({beforeEntries.length})
+                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${isResponse ? "text-amber-300" : "text-purple-300"}`}>
+                    <Layers className="w-4 h-4" /> {isResponse ? "Response Headers (antes)" : "Request Headers"} ({beforeEntries.length})
                   </h4>
                   <div className="space-y-1">
                     {beforeEntries.map(([k, v]) => (
@@ -1328,11 +1352,19 @@ function FlowStep({
                 </div>
               )}
 
-              {/* Headers After: en phase_end mostrar como "Headers Finales", en phase_start como "Response Headers" */}
+              {/* Headers After */}
               {afterEntries.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-bold text-green-300 mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4" /> {isEnd ? "Headers Finales" : "Response Headers"} ({afterEntries.length})
+                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${
+                    isResponseEnd ? "text-orange-300" :
+                    isResponseStart ? "text-amber-300" :
+                    "text-green-300"
+                  }`}>
+                    <Layers className="w-4 h-4" /> {
+                      isResponseEnd ? "Response Headers Finales" :
+                      isResponseStart ? "Response Headers (después)" :
+                      isEnd ? "Headers Finales" : "Response Headers"
+                    } ({afterEntries.length})
                     {/* Resumen de cambios */}
                     {step.headers_before && (() => {
                       const added = afterEntries.filter(([k]) => !(k in step.headers_before)).length;

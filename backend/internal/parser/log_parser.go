@@ -163,13 +163,13 @@ func (p *LogParser) parseLuaLog(line string, raw rawLine) *storage.LuaLogFields 
 		}
 	}
 
-	// Extraer headers_before (campo explícito o "headers" en phase_start o client_request)
+	// Extraer headers_before (campo explícito o "headers" en phase_start/response_phase_start/client_request)
 	if v, ok := full["headers_before"]; ok {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersBefore = headers
 		}
-	} else if v, ok := full["headers"]; ok && (raw.Event == "phase_start" || raw.Event == "client_request") {
+	} else if v, ok := full["headers"]; ok && (raw.Event == "phase_start" || raw.Event == "response_phase_start" || raw.Event == "client_request") {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersBefore = headers
@@ -182,13 +182,13 @@ func (p *LogParser) parseLuaLog(line string, raw rawLine) *storage.LuaLogFields 
 		}
 	}
 
-	// Extraer headers_after (campo explícito o "headers" en phase_end)
+	// Extraer headers_after (campo explícito o "headers" en phase_end/response_phase_end)
 	if v, ok := full["headers_after"]; ok {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersAfter = headers
 		}
-	} else if v, ok := full["headers"]; ok && raw.Event == "phase_end" {
+	} else if v, ok := full["headers"]; ok && (raw.Event == "phase_end" || raw.Event == "response_phase_end") {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersAfter = headers
