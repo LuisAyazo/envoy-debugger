@@ -148,9 +148,9 @@ function JsonHighlight({ json }: { json: string }) {
         let key = 0;
         // key: "word":
         rest = rest.replace(/^(\s*)("(?:[^"\\]|\\.)*")(\s*:)/g, (_, sp, k, colon) => {
-          parts.push(<span key={key++} className="text-gray-300">{sp}</span>);
-          parts.push(<span key={key++} className="text-cyan-300">{k}</span>);
-          parts.push(<span key={key++} className="text-gray-400">{colon}</span>);
+          parts.push(<span key={key++} className="text-foreground/60">{sp}</span>);
+          parts.push(<span key={key++} className="text-blue-600 dark:text-blue-400">{k}</span>);
+          parts.push(<span key={key++} className="text-muted-foreground">{colon}</span>);
           return "\x00";
         });
         if (rest.includes("\x00")) {
@@ -174,15 +174,15 @@ function tokenizeValue(text: string, startKey: number): React.ReactNode[] {
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(<span key={k++} className="text-gray-300">{text.slice(last, m.index)}</span>);
-    if (m[1]) parts.push(<span key={k++} className="text-green-400">{m[1]}</span>);
-    else if (m[2]) parts.push(<span key={k++} className="text-yellow-400">{m[2]}</span>);
-    else if (m[3]) parts.push(<span key={k++} className="text-orange-400">{m[3]}</span>);
-    else if (m[4]) parts.push(<span key={k++} className="text-red-400">{m[4]}</span>);
-    else parts.push(<span key={k++} className="text-gray-400">{m[0]}</span>);
+    if (m.index > last) parts.push(<span key={k++} className="text-foreground/70">{text.slice(last, m.index)}</span>);
+    if (m[1]) parts.push(<span key={k++} className="text-emerald-600 dark:text-emerald-400">{m[1]}</span>);
+    else if (m[2]) parts.push(<span key={k++} className="text-amber-600 dark:text-amber-400">{m[2]}</span>);
+    else if (m[3]) parts.push(<span key={k++} className="text-orange-600 dark:text-orange-400">{m[3]}</span>);
+    else if (m[4]) parts.push(<span key={k++} className="text-red-600 dark:text-red-400">{m[4]}</span>);
+    else parts.push(<span key={k++} className="text-muted-foreground">{m[0]}</span>);
     last = m.index + m[0].length;
   }
-  if (last < text.length) parts.push(<span key={k++} className="text-gray-300">{text.slice(last)}</span>);
+  if (last < text.length) parts.push(<span key={k++} className="text-foreground/70">{text.slice(last)}</span>);
   return parts;
 }
 
@@ -195,11 +195,11 @@ export default function FlowPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [selectedView, setSelectedView] = useState<"phases" | "raw">("phases");
-  const [showSensitive, setShowSensitive] = useState(true);
-  const [globalDecode, setGlobalDecode] = useState(true);
+  const [showSensitive, setShowSensitive] = useState(false);
+  const [globalDecode, setGlobalDecode] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<"all" | "phase_start" | "phase_end" | "response_phase_start" | "response_phase_end" | "error">("all");
-  const [clientExpanded, setClientExpanded] = useState(true);
+  const [clientExpanded, setClientExpanded] = useState(false);
   const [upstreamExpanded, setUpstreamExpanded] = useState(false);
   const [responseExpanded, setResponseExpanded] = useState(false);
 
@@ -227,8 +227,8 @@ export default function FlowPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-cyan-400">
-          <RefreshCw className="w-6 h-6 animate-spin" />
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <RefreshCw className="w-5 h-5 animate-spin" />
           <span>Cargando flujo del request...</span>
         </div>
       </div>
@@ -238,12 +238,12 @@ export default function FlowPage() {
   if (error || !flowData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        <AlertTriangle className="w-16 h-16 text-red-400 mb-4" />
-        <h1 className="text-2xl font-bold text-white mb-2">Error al cargar el request</h1>
-        <p className="text-gray-400 mb-6">{error || "No se encontraron datos"}</p>
+        <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+        <h1 className="text-2xl font-bold text-foreground mb-2">Error al cargar el request</h1>
+        <p className="text-muted-foreground mb-6">{error || "No se encontraron datos"}</p>
         <Link href="/requests">
-          <button className="px-6 py-3 rounded-xl glass-strong hover:bg-white/10 text-white font-semibold flex items-center gap-2">
-            <ArrowLeft className="w-5 h-5" />
+          <button className="btn-secondary flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
             Volver a Requests
           </button>
         </Link>
@@ -254,106 +254,94 @@ export default function FlowPage() {
   // Helper components
   function ViewTab({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
     return (
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+      <button
         onClick={onClick}
-        className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
-          active 
-            ? 'glass-strong border-2 border-cyan-400 glow-cyan text-white' 
-            : 'glass hover:glass-strong text-gray-400 hover:text-white'
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          active
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-muted-foreground hover:text-foreground'
         }`}
       >
         {icon}
-        <span className="font-semibold">{label}</span>
-      </motion.button>
+        <span>{label}</span>
+      </button>
     );
   }
 
   return (
     <div className="min-h-screen">
-      <motion.header 
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
-      >
-        <div className="max-w-screen-2xl mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
+        <div className="max-w-screen-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <Link href="/requests">
-                <motion.button 
-                  whileHover={{ scale: 1.1, x: -5 }}
-                  className="w-10 h-10 rounded-xl glass hover:glass-strong flex items-center justify-center glow-cyan"
-                >
-                  <ArrowLeft className="w-5 h-5 text-cyan-400" />
-                </motion.button>
+                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">Request Flow</h1>
-                <p className="text-sm text-purple-300/60">
-                  <span className="text-gray-400">{flowData.method}</span> <code className="text-cyan-400">{flowData.path}</code> • 
-                  ID: <code className="text-cyan-400">{flowData.request_id}</code>
+                <h1 className="text-lg font-semibold text-foreground">Request Flow</h1>
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-mono font-medium text-foreground">{flowData.method}</span>{" "}
+                  <code className="text-primary">{flowData.path}</code>
+                  {" · "}ID: <code className="text-primary font-mono">{flowData.request_id}</code>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className={`px-4 py-2 rounded-lg glass-strong text-sm ${
-                flowData.status_code >= 200 && flowData.status_code < 300 ? "glow-green" :
-                flowData.status_code >= 400 ? "glow-red" : ""
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                flowData.status_code >= 200 && flowData.status_code < 300
+                  ? "badge-success"
+                  : flowData.status_code >= 400
+                  ? "badge-error"
+                  : "badge-warning"
               }`}>
-                <span className={`font-semibold ${
-                  flowData.status_code >= 200 && flowData.status_code < 300 ? "text-green-300" :
-                  flowData.status_code >= 400 ? "text-red-300" : "text-yellow-300"
-                }`}>
-                  {flowData.status_code >= 200 && flowData.status_code < 300 ? "✅" : "❌"} {flowData.status_code}
-                </span>
-              </div>
+                {flowData.status_code}
+              </span>
             </div>
           </div>
         </div>
-      </motion.header>
+      </div>
 
-      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-4">
         
         {/* Request Metadata Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-strong rounded-2xl p-6"
+          className="bg-card border border-border rounded-xl p-5"
         >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
-              <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
                 <Activity className="w-3 h-3" />
                 Trace ID
               </div>
-              <code className="text-sm text-cyan-400 font-mono">{flowData.trace_id || "—"}</code>
+              <code className="text-sm text-primary font-mono">{flowData.trace_id || "—"}</code>
             </div>
             <div>
-              <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
                 <Clock className="w-3 h-3" />
                 Total Duration
               </div>
-              <div className="text-sm text-purple-400 font-bold">{flowData.duration_ms}ms</div>
+              <div className="text-sm font-bold text-foreground">{flowData.duration_ms}ms</div>
             </div>
             <div>
-              <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
                 <Network className="w-3 h-3" />
                 Upstream
               </div>
-              <div className="text-sm text-white truncate" title={flowData.upstream_cluster}>{flowData.upstream_cluster || "—"}</div>
+              <div className="text-sm text-foreground truncate" title={flowData.upstream_cluster}>{flowData.upstream_cluster || "—"}</div>
             </div>
-            <div className="flex items-center gap-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl glass hover:glass-strong text-sm"
+            <div className="flex items-center">
+              <button
+                className="btn-secondary flex items-center gap-2 text-xs"
                 onClick={() => navigator.clipboard.writeText(JSON.stringify(flowData, null, 2))}
               >
-                <Download className="w-4 h-4 text-green-400" />
+                <Download className="w-3.5 h-3.5" />
                 <span>Export JSON</span>
-              </motion.button>
+              </button>
             </div>
           </div>
         </motion.div>
@@ -439,34 +427,32 @@ export default function FlowPage() {
 
           const hasStageInfo = Object.keys(beforeAuthClaims).length > 0 || Object.keys(afterAuthClaims).length > 0;
 
-          function ClaimCard({ claimKey, value, color }: { claimKey: string; value: any; color: string }) {
+          function ClaimCard({ claimKey, value }: { claimKey: string; value: any }) {
+            const displayVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
             return (
-              <div className={`border rounded-lg p-2.5 ${color}`}>
-                <div className="text-[10px] text-gray-400 font-mono mb-1 truncate" title={claimKey}>{claimKey}</div>
-                <code className="text-xs text-yellow-300 font-mono break-all">
-                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                </code>
+              <div className="flex flex-col gap-0.5 px-3 py-2 rounded-md bg-muted/20 hover:bg-muted/50 transition-colors border border-transparent hover:border-border/40">
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider truncate" title={claimKey}>{claimKey}</span>
+                <span className="text-xs text-foreground break-all">{displayVal}</span>
               </div>
             );
           }
 
           if (!hasStageInfo) {
-            // Sin tokens encontrados: mostrar jwt_claims global plano
             return (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="glass-strong rounded-2xl p-6 border-2 border-yellow-500/20"
+                className="bg-card border border-amber-200 dark:border-amber-800 rounded-xl p-5"
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <Code className="w-5 h-5 text-yellow-400" />
-                  <h3 className="text-xl font-bold gradient-text">JWT Claims Extraídos</h3>
-                  <span className="text-xs text-gray-400">{Object.keys(flowData.jwt_claims).length} claims</span>
+                <div className="flex items-center gap-2 mb-4">
+                  <Code className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <h3 className="font-semibold text-foreground">JWT Claims Extraídos</h3>
+                  <span className="text-xs text-muted-foreground">{Object.keys(flowData.jwt_claims).length} claims</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {Object.entries(flowData.jwt_claims).map(([k, v]) => (
-                    <ClaimCard key={k} claimKey={k} value={v} color="bg-black/30 border-white/5" />
+                    <ClaimCard key={k} claimKey={k} value={v} />
                   ))}
                 </div>
               </motion.div>
@@ -475,49 +461,47 @@ export default function FlowPage() {
 
           return (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="glass-strong rounded-2xl p-6 border-2 border-yellow-500/20"
+              className="bg-card border border-amber-200 dark:border-amber-800 rounded-xl p-5"
             >
-              <div className="flex items-center gap-3 mb-5">
-                <Code className="w-5 h-5 text-yellow-400" />
-                <h3 className="text-xl font-bold gradient-text">JWT Claims Extraídos</h3>
-                <span className="text-xs text-gray-400">
+              <div className="flex items-center gap-2 mb-4">
+                <Code className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h3 className="font-semibold text-foreground">JWT Claims Extraídos</h3>
+                <span className="text-xs text-muted-foreground">
                   {Object.keys(beforeAuthClaims).length + Object.keys(afterAuthClaims).length} claims
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* BeforeAuth — authorization header */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {Object.keys(beforeAuthClaims).length > 0 && (
-                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"></span>
-                      <span className="text-sm font-bold text-blue-300">BeforeAuth</span>
-                      <span className="text-xs text-blue-400/70 font-mono">· {beforeProvider}</span>
-                      <span className="ml-auto text-[10px] text-gray-500">{Object.keys(beforeAuthClaims).length} claims</span>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                      <span className="text-xs font-semibold text-foreground">BeforeAuth</span>
+                      <span className="text-xs text-muted-foreground font-mono">· {beforeProvider}</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(beforeAuthClaims).length} claims</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {Object.entries(beforeAuthClaims).map(([k, v]) => (
-                        <ClaimCard key={k} claimKey={k} value={v} color="bg-blue-500/5 border-blue-500/10" />
+                        <ClaimCard key={k} claimKey={k} value={v} />
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* AfterAuth — x-vix-user-token header */}
                 {Object.keys(afterAuthClaims).length > 0 && (
-                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400 inline-block"></span>
-                      <span className="text-sm font-bold text-purple-300">AfterAuth</span>
-                      <span className="text-xs text-purple-400/70 font-mono">· {afterProvider}</span>
-                      <span className="ml-auto text-[10px] text-gray-500">{Object.keys(afterAuthClaims).length} claims</span>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                      <span className="text-xs font-semibold text-foreground">AfterAuth</span>
+                      <span className="text-xs text-muted-foreground font-mono">· {afterProvider}</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(afterAuthClaims).length} claims</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {Object.entries(afterAuthClaims).map(([k, v]) => (
-                        <ClaimCard key={k} claimKey={k} value={v} color="bg-purple-500/5 border-purple-500/10" />
+                        <ClaimCard key={k} claimKey={k} value={v} />
                       ))}
                     </div>
                   </div>
@@ -530,23 +514,25 @@ export default function FlowPage() {
         {/* Error Alert */}
         {flowData.errors && flowData.errors.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="glass-strong rounded-2xl p-6 border-2 border-red-500/30 glow-red"
+            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-5"
           >
-            <div className="flex items-start gap-4">
-              <AlertTriangle className="w-8 h-8 text-red-400 flex-shrink-0 animate-pulse" />
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div className="w-full">
-                <div className="text-red-300 font-bold text-lg mb-4">⚠️ Errores Detectados ({flowData.errors.length})</div>
-                <div className="space-y-3">
+                <div className="text-red-700 dark:text-red-400 font-semibold mb-3">
+                  Errores Detectados ({flowData.errors.length})
+                </div>
+                <div className="space-y-2">
                   {flowData.errors.map((err: any, idx: number) => (
-                    <div key={idx} className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <div key={idx} className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="text-xs font-bold text-red-400 uppercase">{err.phase}</span>
-                        <span className="text-xs text-gray-400">{new Date(err.timestamp).toLocaleTimeString()}</span>
+                        <span className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase">{err.phase}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(err.timestamp).toLocaleTimeString()}</span>
                       </div>
-                      <div className="text-sm text-red-200">{err.message}</div>
+                      <div className="text-sm text-red-700 dark:text-red-300">{err.message}</div>
                     </div>
                   ))}
                 </div>
@@ -555,12 +541,12 @@ export default function FlowPage() {
           </motion.div>
         )}
 
-        {/* Toolbar: View Selector + Sensitive Toggle + Search */}
+        {/* Toolbar */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="flex flex-wrap items-center gap-3"
+          className="flex flex-wrap items-center gap-2"
         >
           <ViewTab icon={<Layers className="w-4 h-4" />} label="Fases Lua" active={selectedView === "phases"} onClick={() => setSelectedView("phases")} />
           <ViewTab icon={<BarChart3 className="w-4 h-4" />} label="Raw JSON" active={selectedView === "raw"} onClick={() => setSelectedView("raw")} />
@@ -568,46 +554,42 @@ export default function FlowPage() {
           <div className="flex-1" />
 
           {/* Sensitive toggle */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={() => setShowSensitive(s => !s)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               showSensitive
-                ? "glass-strong border border-yellow-400/50 text-yellow-300"
-                : "glass text-gray-400 hover:text-white"
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
-            title={showSensitive ? "Ocultar headers sensibles" : "Mostrar headers sensibles"}
+            title={showSensitive ? "Ocultar valores sensibles" : "Mostrar valores sensibles"}
           >
-            {showSensitive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            <span>{showSensitive ? "Ocultar sensibles" : "Mostrar sensibles"}</span>
-          </motion.button>
+            {showSensitive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span>{showSensitive ? "Sensibles visibles" : "Sensibles ocultos"}</span>
+          </button>
 
           {/* Global decode toggle */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={() => setGlobalDecode(d => !d)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               globalDecode
-                ? "glass-strong border border-green-400/50 text-green-300"
-                : "glass text-gray-400 hover:text-white"
+                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
-            title={globalDecode ? "Ocultar decodificación de base64/JWT" : "Decodificar automáticamente base64/JWT en todos los headers"}
+            title={globalDecode ? "Ocultar decodificación" : "Decodificar base64/JWT"}
           >
-            <Code className="w-4 h-4" />
-            <span>{globalDecode ? "Ocultar decode" : "Decodificar todo"}</span>
-          </motion.button>
+            <Code className="w-3.5 h-3.5" />
+            <span>{globalDecode ? "Decodificado activo" : "Decodificar todo"}</span>
+          </button>
 
           {/* Global search */}
           <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Buscar header..."
               value={globalSearch}
               onChange={e => setGlobalSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl glass text-sm text-white placeholder-gray-500 border border-white/10 focus:border-cyan-400/50 outline-none w-48"
+              className="input-base pl-9 w-44 py-1.5 text-sm"
             />
           </div>
         </motion.div>
@@ -615,15 +597,15 @@ export default function FlowPage() {
         {/* Fases Lua View */}
         {selectedView === "phases" && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="glass-strong rounded-2xl overflow-hidden"
+            className="bg-card border border-border rounded-xl overflow-hidden"
           >
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10 bg-white/5">
-              <GitBranch className="w-6 h-6 text-cyan-400" />
-              <h2 className="text-2xl font-bold gradient-text">Pipeline de Fases Lua</h2>
-              <span className="ml-auto text-xs text-gray-400">{flowData.phases?.length ?? 0} eventos</span>
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-muted/30">
+              <GitBranch className="w-4 h-4 text-primary" />
+              <h2 className="font-semibold text-foreground">Pipeline de Fases Lua</h2>
+              <span className="ml-auto text-xs text-muted-foreground">{flowData.phases?.length ?? 0} eventos</span>
             </div>
 
             {/* Timeline visual — usa índice ordinal #N cuando todos los timestamps son iguales */}
@@ -648,13 +630,13 @@ export default function FlowPage() {
                             phase.event === "error" ? "border-red-400 bg-red-400/30" :
                             "border-blue-400 bg-blue-400/30"
                           }`} />
-                          <div className="text-[9px] text-gray-500 mt-1 whitespace-nowrap">
+                          <div className="text-[9px] text-muted-foreground mt-1 whitespace-nowrap">
                             {allSameTs ? `#${idx + 1}` : `+${relMs}ms`}
                           </div>
-                          <div className="text-[9px] text-gray-400 whitespace-nowrap max-w-[70px] truncate">{phase.phase}</div>
+                          <div className="text-[9px] text-muted-foreground/70 whitespace-nowrap max-w-[70px] truncate">{phase.phase}</div>
                         </div>
                         {idx < flowData.phases.length - 1 && (
-                          <div className="w-8 h-px bg-white/20 mx-1" />
+                          <div className="w-8 h-px bg-border mx-1" />
                         )}
                       </div>
                     );
@@ -664,43 +646,50 @@ export default function FlowPage() {
             })()}
 
             {/* Event filter chips */}
-            <div className="px-6 pb-2 flex items-center gap-2 flex-wrap">
-              <Filter className="w-3 h-3 text-gray-500" />
+            <div className="px-5 pb-3 flex items-center gap-1.5 flex-wrap">
+              <Filter className="w-3 h-3 text-muted-foreground" />
               {([
-                { key: "all", label: "Todos", activeClass: "bg-cyan-500/30 border-cyan-400/60 text-cyan-300" },
-                { key: "phase_start", label: "Request Start", activeClass: "bg-blue-500/30 border-blue-400/60 text-blue-300" },
-                { key: "phase_end", label: "Request End", activeClass: "bg-green-500/30 border-green-400/60 text-green-300" },
-                { key: "response_phase_start", label: "Response Start", activeClass: "bg-amber-500/30 border-amber-400/60 text-amber-300" },
-                { key: "response_phase_end", label: "Response End", activeClass: "bg-orange-500/30 border-orange-400/60 text-orange-300" },
-                { key: "error", label: "Errores", activeClass: "bg-red-500/30 border-red-400/60 text-red-300" },
+                { key: "all", label: "Todos" },
+                { key: "phase_start", label: "Request Start" },
+                { key: "phase_end", label: "Request End" },
+                { key: "response_phase_start", label: "Response Start" },
+                { key: "response_phase_end", label: "Response End" },
+                { key: "error", label: "Errores" },
               ] as const).map(f => (
                 <button
                   key={f.key}
                   onClick={() => setEventFilter(f.key as any)}
-                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border ${
                     eventFilter === f.key
-                      ? f.activeClass
-                      : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {f.label}
                 </button>
               ))}
               <div className="flex-1" />
-              {/* Expand/collapse all */}
               <button
                 onClick={() => {
                   const phases = flowData.phases ?? [];
-                  if (expandedSteps.size === phases.length) {
+                  const allPhasesExpanded = expandedSteps.size === phases.length;
+                  const allExpanded = allPhasesExpanded && clientExpanded && upstreamExpanded && responseExpanded;
+                  if (allExpanded) {
                     setExpandedSteps(new Set());
+                    setClientExpanded(false);
+                    setUpstreamExpanded(false);
+                    setResponseExpanded(false);
                   } else {
                     setExpandedSteps(new Set(phases.map((_: any, i: number) => i)));
+                    setClientExpanded(true);
+                    setUpstreamExpanded(true);
+                    setResponseExpanded(true);
                   }
                 }}
-                className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronsUpDown className="w-3 h-3" />
-                {expandedSteps.size === (flowData.phases?.length ?? 0) ? "Colapsar todo" : "Expandir todo"}
+                {expandedSteps.size === (flowData.phases?.length ?? 0) && clientExpanded && upstreamExpanded && responseExpanded ? "Colapsar todo" : "Expandir todo"}
               </button>
             </div>
 
@@ -741,57 +730,77 @@ export default function FlowPage() {
               const isFromAccessLog = sourceLabel === "access log";
 
               return (
-                <div className="px-6 pb-2">
-                  <div className="glass rounded-xl border-l-4 border-cyan-500/70 bg-cyan-500/5 overflow-hidden">
+                <div className="px-5 pb-3">
+                  <div className="bg-background border border-border border-l-4 border-l-blue-400 dark:border-l-blue-500 rounded-xl overflow-hidden">
                     <div
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                      className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => setClientExpanded(x => !x)}
                     >
-                      <Globe className="w-6 h-6 text-cyan-400 shrink-0" />
+                      <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-white">Request del Cliente</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">ENTRADA</span>
-                          {hasDisplayHeaders && <span className="text-[10px] text-gray-500">{Object.keys(displayHeaders).length} headers</span>}
+                          <span className="font-semibold text-foreground text-sm">Request del Cliente</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-info">ENTRADA</span>
+                          {hasDisplayHeaders && <span className="text-[10px] text-muted-foreground">{Object.keys(displayHeaders).length} headers</span>}
                           {flowData.status_code >= 400 && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-error">
                               {flowData.status_code}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          <span className="text-cyan-300 font-mono font-bold">{flowData.method}</span>{" "}
-                          <span className="text-gray-300">{flowData.path}</span>
-                          {flowData.authority && <span className="ml-2 text-gray-500">→ {flowData.authority}</span>}
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          <span className="font-mono font-semibold text-foreground">{flowData.method}</span>{" "}
+                          <span className="text-foreground/70">{flowData.path}</span>
+                          {flowData.authority && <span className="ml-2 text-muted-foreground">→ {flowData.authority}</span>}
                         </div>
                       </div>
                       <motion.div animate={{ rotate: clientExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                       </motion.div>
                     </div>
                     <AnimatePresence>
-                      {clientExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="border-t border-white/10 bg-black/20 px-4 py-3"
-                        >
-                          <div className="space-y-1">
-                            {Object.entries(displayHeaders).map(([k, v]) => (
-                              <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
-                            ))}
+                  {clientExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-t border-border bg-muted/20 px-4 py-3"
+                    >
+                      <div className="space-y-1">
+                        {Object.entries(displayHeaders).map(([k, v]) => (
+                          <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
+                        ))}
+                      </div>
+                      {/* Body del request del cliente */}
+                      {(() => {
+                        // Buscar request_body en el primer phase_start
+                        const firstPhaseStart = (flowData.phases ?? []).find((p: any) => p.event === "phase_start" && p.request_body);
+                        const reqBody = firstPhaseStart?.request_body;
+                        if (!reqBody) return null;
+                        return (
+                          <div className="mt-3 border-t border-border pt-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Body del Request</span>
+                              <span className="text-[10px] text-muted-foreground">{reqBody.length} bytes · JSON</span>
+                            </div>
+                            <div className="bg-muted rounded-lg p-3 overflow-auto max-h-64">
+                              <JsonHighlight json={(() => {
+                                try { return JSON.stringify(JSON.parse(reqBody), null, 2); } catch { return reqBody; }
+                              })()} />
+                            </div>
                           </div>
-                          {isFromAccessLog && (
-                            <div className="mt-2 text-[10px] text-gray-600 italic">* Headers capturados por Lua filter (access log)</div>
-                          )}
-                          {!isFromAccessLog && hasDisplayHeaders && (
-                            <div className="mt-2 text-[10px] text-gray-600 italic">* Solo datos básicos del access log disponibles</div>
-                          )}
-                        </motion.div>
+                        );
+                      })()}
+                      {isFromAccessLog && (
+                        <div className="mt-2 text-[10px] text-muted-foreground italic">* Headers capturados por Lua filter (access log)</div>
                       )}
-                    </AnimatePresence>
+                      {!isFromAccessLog && hasDisplayHeaders && (
+                        <div className="mt-2 text-[10px] text-muted-foreground italic">* Solo datos básicos del access log disponibles</div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                   </div>
                 </div>
               );
@@ -847,65 +856,88 @@ export default function FlowPage() {
             {flowData.phases && flowData.phases.length > 0 && (() => {
               const lastRequestEnd = [...flowData.phases].reverse().find((p: any) => p.event === "phase_end" && p.headers_after);
               const upstreamHeaders = lastRequestEnd?.headers_after;
+              // Body de respuesta del upstream: viene del primer response_phase_start o response_phase_end con body
+              const firstRespStart = flowData.phases.find((p: any) => p.event === "response_phase_start" && p.response_body);
+              const firstRespEnd = flowData.phases.find((p: any) => p.event === "response_phase_end" && p.response_body);
+              const upstreamResponseBody = firstRespStart?.response_body ?? firstRespEnd?.response_body;
+              const hasContent = (upstreamHeaders && Object.keys(upstreamHeaders).length > 0) || upstreamResponseBody;
               return (
-                <div className="px-6 pb-2">
-                  <div className="glass rounded-xl border-l-4 border-indigo-500/70 bg-indigo-500/5 overflow-hidden">
+                <div className="px-5 pb-3">
+                  <div className="bg-background border border-border border-l-4 border-l-slate-400 dark:border-l-slate-500 rounded-xl overflow-hidden">
                     <div
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                      className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => setUpstreamExpanded(x => !x)}
                     >
-                      <Server className="w-6 h-6 text-indigo-400 shrink-0" />
+                      <Server className="w-4 h-4 text-muted-foreground shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-white">Upstream Backend</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">UPSTREAM</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            flowData.status_code >= 200 && flowData.status_code < 300 ? "bg-green-500/20 text-green-300" :
-                            flowData.status_code >= 400 ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"
+                          <span className="font-semibold text-foreground text-sm">Upstream Backend</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-neutral">UPSTREAM</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            flowData.status_code >= 200 && flowData.status_code < 300 ? "badge-success" :
+                            flowData.status_code >= 400 ? "badge-error" : "badge-warning"
                           }`}>{flowData.status_code}</span>
-                          {upstreamHeaders && <span className="text-[10px] text-gray-500">{Object.keys(upstreamHeaders).length} headers recibidos</span>}
+                          {upstreamHeaders && <span className="text-[10px] text-muted-foreground">{Object.keys(upstreamHeaders).length} headers recibidos</span>}
+                          {upstreamResponseBody && <span className="text-[10px] text-muted-foreground">· body {upstreamResponseBody.length}b</span>}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1 space-y-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
                           {flowData.upstream_cluster && (
                             <div className="flex items-center gap-1">
-                              <span className="text-gray-500">→</span>
-                              <span className="text-indigo-300 font-mono text-[11px] font-bold">{flowData.upstream_cluster}</span>
+                              <span>→</span>
+                              <span className="font-mono text-[11px] font-semibold text-foreground">{flowData.upstream_cluster}</span>
                             </div>
                           )}
                           {flowData.upstream_host && (
-                            <div className="text-[10px] text-gray-500 font-mono">{flowData.upstream_host}</div>
+                            <div className="text-[10px] font-mono">{flowData.upstream_host}</div>
                           )}
                         </div>
                         {flowData.response_flags && flowData.response_flags !== "-" && (() => {
                           const { desc, isError: flagIsError } = getResponseFlagInfo(flowData.response_flags);
                           return (
-                            <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${flagIsError ? "bg-orange-500/10 border border-orange-500/30" : "bg-gray-500/10"}`}>
-                              <span className={`font-bold font-mono ${flagIsError ? "text-orange-400" : "text-gray-400"}`}>
+                            <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${flagIsError ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800" : "bg-muted"}`}>
+                              <span className={`font-semibold font-mono ${flagIsError ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
                                 ⚑ {flowData.response_flags}
                               </span>
-                              <span className="ml-2 text-gray-300">{desc}</span>
+                              <span className="ml-2 text-foreground/70">{desc}</span>
                             </div>
                           );
                         })()}
                       </div>
                       <motion.div animate={{ rotate: upstreamExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                       </motion.div>
                     </div>
                     <AnimatePresence>
-                      {upstreamExpanded && upstreamHeaders && Object.keys(upstreamHeaders).length > 0 && (
+                      {upstreamExpanded && hasContent && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="border-t border-white/10 bg-black/20 px-4 py-3"
+                          className="border-t border-border bg-muted/20"
                         >
-                          <div className="space-y-1">
-                            {Object.entries(upstreamHeaders).map(([k, v]) => (
-                              <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
-                            ))}
-                          </div>
+                          {upstreamHeaders && Object.keys(upstreamHeaders).length > 0 && (
+                            <div className="px-4 py-3">
+                              <div className="space-y-1">
+                                {Object.entries(upstreamHeaders).map(([k, v]) => (
+                                  <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {upstreamResponseBody && (
+                            <div className={`px-4 py-3 ${upstreamHeaders && Object.keys(upstreamHeaders).length > 0 ? "border-t border-border/50" : ""}`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Body de Respuesta del Upstream</span>
+                                <span className="text-[10px] text-muted-foreground">JSON original ({upstreamResponseBody.length} bytes)</span>
+                              </div>
+                              <div className="bg-muted rounded-lg p-3 overflow-auto max-h-64">
+                                <JsonHighlight json={(() => {
+                                  try { return JSON.stringify(JSON.parse(upstreamResponseBody), null, 2); } catch { return upstreamResponseBody; }
+                                })()} />
+                              </div>
+                            </div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1031,37 +1063,37 @@ export default function FlowPage() {
               const respChanged = respDiffRows.filter(r => r.status === "changed").length;
 
               return (
-                <div className="px-6 pb-6">
-                  <div className="glass rounded-xl border-l-4 border-purple-500/70 bg-purple-500/5 overflow-hidden">
+                <div className="px-5 pb-5">
+                  <div className="bg-background border border-border border-l-4 border-l-emerald-400 dark:border-l-emerald-500 rounded-xl overflow-hidden">
                     <div
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                      className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => setResponseExpanded(x => !x)}
                     >
-                      <Server className="w-6 h-6 text-purple-400 shrink-0" />
+                      <Server className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-white">Response al Cliente</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">SALIDA</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            flowData.status_code >= 200 && flowData.status_code < 300 ? "bg-green-500/20 text-green-300" :
-                            flowData.status_code >= 400 ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"
+                          <span className="font-semibold text-foreground text-sm">Response al Cliente</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-success">SALIDA</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            flowData.status_code >= 200 && flowData.status_code < 300 ? "badge-success" :
+                            flowData.status_code >= 400 ? "badge-error" : "badge-warning"
                           }`}>{flowData.status_code}</span>
                           {Object.keys(finalRespHeaders).length > 0 && (
-                            <span className="text-[10px] text-gray-500">{Object.keys(finalRespHeaders).length} resp headers</span>
+                            <span className="text-[10px] text-muted-foreground">{Object.keys(finalRespHeaders).length} resp headers</span>
                           )}
-                          {respAdded > 0 && <span className="text-[10px] font-bold text-green-400">+{respAdded}</span>}
-                          {respRemoved > 0 && <span className="text-[10px] font-bold text-red-400">-{respRemoved}</span>}
-                          {respChanged > 0 && <span className="text-[10px] font-bold text-yellow-400">~{respChanged}</span>}
+                          {respAdded > 0 && <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">+{respAdded}</span>}
+                          {respRemoved > 0 && <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">-{respRemoved}</span>}
+                          {respChanged > 0 && <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">~{respChanged}</span>}
                           {Object.keys(finalReqHeaders).length > 0 && (
-                            <span className="text-[10px] text-gray-400 ml-2">· {Object.keys(finalReqHeaders).length} req headers al upstream</span>
+                            <span className="text-[10px] text-muted-foreground ml-1">· {Object.keys(finalReqHeaders).length} req headers al upstream</span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5">
                           Headers HTTP de respuesta al cliente · Headers de request enviados al upstream
                         </div>
                       </div>
                       <motion.div animate={{ rotate: responseExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                       </motion.div>
                     </div>
                     <AnimatePresence>
@@ -1071,17 +1103,16 @@ export default function FlowPage() {
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="border-t border-white/10 bg-black/20"
+                          className="border-t border-border bg-muted/20"
                         >
-                          {/* Sección 1: Headers de RESPUESTA HTTP (lo que el cliente recibe) */}
                           {respDiffRows.length > 0 && (
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">↓ Headers de Respuesta HTTP</span>
-                                <span className="text-[10px] text-gray-500">Lo que el cliente recibe del gateway</span>
-                                {respAdded > 0 && <span className="text-[10px] font-bold text-green-400">+{respAdded} añadidos</span>}
-                                {respRemoved > 0 && <span className="text-[10px] font-bold text-red-400">-{respRemoved} eliminados</span>}
-                                {respChanged > 0 && <span className="text-[10px] font-bold text-yellow-400">~{respChanged} modificados</span>}
+                                <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">↓ Headers de Respuesta HTTP</span>
+                                <span className="text-[10px] text-muted-foreground">Lo que el cliente recibe del gateway</span>
+                                {respAdded > 0 && <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">+{respAdded} añadidos</span>}
+                                {respRemoved > 0 && <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">-{respRemoved} eliminados</span>}
+                                {respChanged > 0 && <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">~{respChanged} modificados</span>}
                               </div>
                               <div className="space-y-1">
                                 {respDiffRows.map(r => (
@@ -1099,15 +1130,14 @@ export default function FlowPage() {
                               </div>
                             </div>
                           )}
-                          {/* Sección 2: Headers de REQUEST enviados al Upstream */}
                           {reqDiffRows.length > 0 && (
-                            <div className="px-4 py-3 border-t border-white/5">
+                            <div className="px-4 py-3 border-t border-border/50">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">→ Headers de Request al Upstream</span>
-                                <span className="text-[10px] text-gray-500">Headers que el gateway envió al backend</span>
-                                {reqDiffRows.filter(r => r.status === "added").length > 0 && <span className="text-[10px] font-bold text-green-400">+{reqDiffRows.filter(r => r.status === "added").length} añadidos</span>}
-                                {reqDiffRows.filter(r => r.status === "removed").length > 0 && <span className="text-[10px] font-bold text-red-400">-{reqDiffRows.filter(r => r.status === "removed").length} eliminados</span>}
-                                {reqDiffRows.filter(r => r.status === "changed").length > 0 && <span className="text-[10px] font-bold text-yellow-400">~{reqDiffRows.filter(r => r.status === "changed").length} modificados</span>}
+                                <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">→ Headers de Request al Upstream</span>
+                                <span className="text-[10px] text-muted-foreground">Headers que el gateway envió al backend</span>
+                                {reqDiffRows.filter(r => r.status === "added").length > 0 && <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">+{reqDiffRows.filter(r => r.status === "added").length} añadidos</span>}
+                                {reqDiffRows.filter(r => r.status === "removed").length > 0 && <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">-{reqDiffRows.filter(r => r.status === "removed").length} eliminados</span>}
+                                {reqDiffRows.filter(r => r.status === "changed").length > 0 && <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">~{reqDiffRows.filter(r => r.status === "changed").length} modificados</span>}
                               </div>
                               <div className="space-y-1">
                                 {reqDiffRows.map(r => (
@@ -1125,20 +1155,19 @@ export default function FlowPage() {
                               </div>
                             </div>
                           )}
-                          {/* Sección 3: Body de la Respuesta del Upstream */}
                           {(lastResponseEnd?.response_body || lastResponseEnd?.response_body_skipped) && (
-                            <div className="px-4 py-3 border-t border-white/5">
+                            <div className="px-4 py-3 border-t border-border/50">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">📄 Body de Respuesta</span>
+                                <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Body de Respuesta</span>
                                 {lastResponseEnd?.response_body && (
-                                  <span className="text-[10px] text-gray-500">JSON del upstream ({lastResponseEnd.response_body.length} bytes)</span>
+                                  <span className="text-[10px] text-muted-foreground">JSON del upstream ({lastResponseEnd.response_body.length} bytes)</span>
                                 )}
                                 {lastResponseEnd?.response_body_skipped && (
-                                  <span className="text-[10px] text-yellow-500">⚠ no capturado</span>
+                                  <span className="text-[10px] text-amber-600 dark:text-amber-400">⚠ no capturado</span>
                                 )}
                               </div>
                               {lastResponseEnd?.response_body ? (
-                                <div className="bg-black/30 rounded-lg p-3 overflow-auto max-h-96">
+                                <div className="bg-muted rounded-lg p-3 overflow-auto max-h-96">
                                   <JsonHighlight json={(() => {
                                     try {
                                       return JSON.stringify(JSON.parse(lastResponseEnd.response_body), null, 2);
@@ -1148,7 +1177,7 @@ export default function FlowPage() {
                                   })()} />
                                 </div>
                               ) : (
-                                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs text-yellow-300">
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
                                   {lastResponseEnd?.response_body_skipped}
                                 </div>
                               )}
@@ -1164,30 +1193,28 @@ export default function FlowPage() {
           </motion.div>
         )}
 
-        {/* Raw JSON View — con syntax highlighting y decode inline */}
+        {/* Raw JSON View */}
         {selectedView === "raw" && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-strong rounded-2xl overflow-hidden"
+            className="bg-card border border-border rounded-xl overflow-hidden"
           >
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/5">
-              <div className="flex items-center gap-3">
-                <Code className="w-6 h-6 text-cyan-400" />
-                <h2 className="text-2xl font-bold gradient-text">Raw RequestTrace JSON</h2>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Code className="w-4 h-4 text-primary" />
+                <h2 className="font-semibold text-foreground">Raw RequestTrace JSON</h2>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={() => navigator.clipboard.writeText(JSON.stringify(flowData, null, 2))}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg glass hover:glass-strong text-sm"
+                className="btn-secondary flex items-center gap-2 text-xs py-1.5"
               >
-                <Copy className="w-4 h-4 text-green-400" />
-                <span className="text-gray-300">Copiar</span>
-              </motion.button>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copiar</span>
+              </button>
             </div>
-            <div className="p-6">
-              <pre className="text-xs bg-black/60 p-4 rounded-lg overflow-x-auto border border-cyan-400/20 font-mono leading-relaxed">
+            <div className="p-5">
+              <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto border border-border font-mono leading-relaxed">
                 <JsonHighlight json={JSON.stringify(flowData, null, 2)} />
               </pre>
             </div>
@@ -1197,16 +1224,16 @@ export default function FlowPage() {
         {/* Access Log Info Card */}
         {flowData.access_log && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="glass-strong rounded-2xl p-6 border border-purple-500/20"
+            className="bg-card border border-border rounded-xl p-5"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <Server className="w-5 h-5 text-purple-400" />
-              <h3 className="text-lg font-bold gradient-text">Access Log</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Server className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-foreground">Access Log</h3>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {[
                 { label: "Downstream IP", key: "downstream_remote_address" },
                 { label: "Response Flags", key: "response_flags" },
@@ -1215,9 +1242,9 @@ export default function FlowPage() {
                 { label: "Start Time", key: "start_time" },
                 { label: "End Time", key: "end_time" },
               ].map(({ label, key }) => flowData.access_log[key] ? (
-                <div key={key} className="bg-black/30 rounded-xl p-3">
-                  <div className="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">{label}</div>
-                  <code className="text-xs text-purple-300 font-mono break-all">{String(flowData.access_log[key])}</code>
+                <div key={key} className="bg-muted rounded-lg p-3">
+                  <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">{label}</div>
+                  <code className="text-xs text-primary font-mono break-all">{String(flowData.access_log[key])}</code>
                 </div>
               ) : null)}
             </div>
@@ -1235,27 +1262,25 @@ function HeaderValue({ headerKey, value, showSensitive, globalDecode = true }: {
   headerKey: string; value: string; showSensitive: boolean; globalDecode?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  // null = usar globalDecode, true = forzar mostrar, false = forzar ocultar
+  // localOverride: null = seguir globalDecode, true = forzar decode, false = forzar raw
   const [localOverride, setLocalOverride] = useState<boolean | null>(null);
+
+  // Resetear override local cuando cambia el toggle global
+  useEffect(() => {
+    setLocalOverride(null);
+  }, [globalDecode]);
 
   const keyLower = headerKey.toLowerCase();
   const isSensitive = SENSITIVE_HEADERS.has(keyLower);
   const isBase64H = BASE64_HEADERS.has(keyLower);
-  // JWT: authorization Bearer o cualquier header en JWT_HEADERS
   const isJWT = JWT_HEADERS.has(keyLower) && (
     keyLower === "authorization" ? value.toLowerCase().startsWith("bearer ") : true
   );
-  const canDecode = (isJWT || isBase64H) && (!isSensitive || showSensitive);
-  // Si hay override local, usarlo; si no, usar globalDecode
-  const effectiveShowDecoded = localOverride !== null ? localOverride : (globalDecode && canDecode);
 
-  // Cuando globalDecode cambia, resetear el override local
-  // (no necesitamos useEffect, el render lo maneja)
+  // canDecode: si el header es decodificable (JWT o Base64), independiente de si es sensible
+  const canDecode = isJWT || isBase64H;
 
-  // Mask sensitive
-  const displayRaw = isSensitive && !showSensitive ? "••••••••••••" : value;
-
-  // Decoded value — siempre intentar decodificar si showSensitive o no es sensitive
+  // Intentar decodificar siempre (para tener el valor disponible)
   let decoded: string | null = null;
   if (canDecode) {
     if (isJWT) {
@@ -1267,45 +1292,52 @@ function HeaderValue({ headerKey, value, showSensitive, globalDecode = true }: {
     }
   }
 
-  const needsTruncate = displayRaw.length > TRUNCATE_LEN && !isSensitive;
+  // Si es sensible y showSensitive=false: mostrar bullets en raw, pero SÍ mostrar decode si globalDecode=true
+  const displayRaw = isSensitive && !showSensitive ? "••••••••••••" : value;
+
+  // effectiveShowDecoded: localOverride tiene prioridad, luego globalDecode (si hay decoded disponible)
+  const effectiveShowDecoded = localOverride !== null ? localOverride : (globalDecode && canDecode && decoded !== null);
+
+  const needsTruncate = isSensitive && !showSensitive
+    ? false  // si está oculto como bullets, no truncar
+    : displayRaw.length > TRUNCATE_LEN && !effectiveShowDecoded;
   const shown = needsTruncate && !expanded ? displayRaw.slice(0, TRUNCATE_LEN) + "…" : displayRaw;
 
   return (
     <div className="flex flex-col gap-1 w-full">
-      {/* Si está decodificado: mostrar SOLO el decoded, no el raw */}
-      {canDecode && decoded && effectiveShowDecoded ? (
+      {effectiveShowDecoded && decoded ? (
         <div className="flex flex-col gap-1">
-          <pre className="text-[10px] bg-black/50 border border-yellow-400/20 rounded p-2 text-yellow-200 overflow-x-auto max-h-48 whitespace-pre-wrap">
+          {/* Si es sensible y showSensitive=false, mostrar aviso */}
+          {isSensitive && !showSensitive && (
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
+              🔒 valor sensible — mostrando solo decode
+            </span>
+          )}
+          <pre className="text-[10px] bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-2 text-amber-800 dark:text-amber-300 overflow-x-auto max-h-48 whitespace-pre-wrap">
             {decoded}
           </pre>
           <button
-            onClick={e => {
-              e.stopPropagation();
-              setLocalOverride(false);
-            }}
-            className="text-[10px] text-yellow-400 hover:text-yellow-300 underline whitespace-nowrap self-start"
+            onClick={e => { e.stopPropagation(); setLocalOverride(false); }}
+            className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline whitespace-nowrap self-start"
           >
             ocultar decode
           </button>
         </div>
       ) : (
         <div className="flex items-start gap-1 flex-wrap">
-          <span className="text-gray-300 break-all font-mono text-xs">{shown}</span>
+          <span className="text-foreground/80 break-all font-mono text-xs">{shown}</span>
           {needsTruncate && (
             <button
               onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
-              className="text-[10px] text-cyan-400 hover:text-cyan-300 underline whitespace-nowrap"
+              className="text-[10px] text-primary hover:underline whitespace-nowrap"
             >
               {expanded ? "colapsar" : "ver más"}
             </button>
           )}
           {canDecode && decoded && (
             <button
-              onClick={e => {
-                e.stopPropagation();
-                setLocalOverride(true);
-              }}
-              className="text-[10px] text-yellow-400 hover:text-yellow-300 underline whitespace-nowrap"
+              onClick={e => { e.stopPropagation(); setLocalOverride(true); }}
+              className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline whitespace-nowrap"
             >
               🔓 decodificar
             </button>
@@ -1324,11 +1356,14 @@ function HeaderRow({ headerKey, value, showSensitive, globalDecode, changed, rem
 }) {
   const [copied, setCopied] = useState(false);
   const isSensitive = SENSITIVE_HEADERS.has(headerKey.toLowerCase());
-  const bg = removed ? "bg-red-500/10 border border-red-500/20"
-    : added ? "bg-green-500/10 border border-green-500/20"
-    : changed ? "bg-yellow-500/10 border border-yellow-500/20"
-    : "bg-black/40";
-  const keyColor = removed ? "text-red-400" : added ? "text-green-400" : changed ? "text-yellow-400" : "text-cyan-400";
+  const bg = removed ? "diff-removed"
+    : added ? "diff-added"
+    : changed ? "diff-changed"
+    : "bg-muted/30";
+  const keyColor = removed ? "text-red-600 dark:text-red-400"
+    : added ? "text-emerald-600 dark:text-emerald-400"
+    : changed ? "text-amber-600 dark:text-amber-400"
+    : "text-primary";
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
@@ -1341,19 +1376,19 @@ function HeaderRow({ headerKey, value, showSensitive, globalDecode, changed, rem
     <div className={`group flex items-start gap-2 text-xs rounded px-3 py-2 ${bg}`}>
       <span className={`${keyColor} font-mono font-semibold min-w-[140px] shrink-0`}>
         {removed ? "−" : added ? "+" : changed ? "~" : " "} {headerKey}:
-        {isSensitive && <span className="ml-1 text-[9px] text-yellow-500 uppercase">sensitive</span>}
+        {isSensitive && <span className="ml-1 text-[9px] text-amber-600 dark:text-amber-400 uppercase">sensitive</span>}
       </span>
       <div className="flex-1 min-w-0">
         <HeaderValue headerKey={headerKey} value={value} showSensitive={showSensitive} globalDecode={globalDecode} />
       </div>
       <button
         onClick={handleCopy}
-        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-white/10"
+        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-muted"
         title="Copiar valor"
       >
         {copied
-          ? <CheckCircle className="w-3 h-3 text-green-400" />
-          : <Copy className="w-3 h-3 text-gray-400 hover:text-white" />
+          ? <CheckCircle className="w-3 h-3 text-emerald-500" />
+          : <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />
         }
       </button>
     </div>
@@ -1428,80 +1463,78 @@ function FlowStep({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -50 }}
+      initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      className={`glass rounded-xl border-l-4 ${
-        isIncomplete ? "border-yellow-500/70 bg-yellow-500/5" :
-        isError ? "border-red-500/50 bg-red-500/10" :
-        isResponseEnd ? "border-orange-500/50 bg-orange-500/5" :
-        isResponseStart ? "border-amber-500/50 bg-amber-500/5" :
-        isEnd ? "border-green-500/50 bg-green-500/5" :
-        "border-blue-500/50 bg-blue-500/5"
-      } overflow-hidden`}
+      transition={{ duration: 0.3, delay: index * 0.04 }}
+      className={`bg-background border border-border border-l-4 rounded-xl overflow-hidden ${
+        isIncomplete ? "border-l-amber-400 dark:border-l-amber-500" :
+        isError ? "border-l-red-400 dark:border-l-red-500" :
+        isResponseEnd ? "border-l-orange-400 dark:border-l-orange-500" :
+        isResponseStart ? "border-l-amber-300 dark:border-l-amber-400" :
+        isEnd ? "border-l-emerald-400 dark:border-l-emerald-500" :
+        "border-l-blue-400 dark:border-l-blue-500"
+      }`}
     >
-      <motion.div
-        whileHover={{ x: 5 }}
-        className="p-5 cursor-pointer"
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/40 transition-colors"
         onClick={onToggle}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <motion.div whileHover={{ scale: 1.2 }} transition={{ duration: 0.2 }}>
-              {isIncomplete ? <AlertTriangle className="w-6 h-6 text-yellow-400" /> :
-               isError ? <XCircle className="w-6 h-6 text-red-400" /> :
-               isResponseEnd ? <CheckCircle className="w-6 h-6 text-orange-400" /> :
-               isResponseStart ? <Play className="w-6 h-6 text-amber-400" /> :
-               isEnd ? <CheckCircle className="w-6 h-6 text-green-400" /> :
-               <Play className="w-6 h-6 text-blue-400" />}
-            </motion.div>
+          <div className="flex items-center gap-3">
+            <div>
+              {isIncomplete ? <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" /> :
+               isError ? <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" /> :
+               isResponseEnd ? <CheckCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" /> :
+               isResponseStart ? <Play className="w-4 h-4 text-amber-600 dark:text-amber-400" /> :
+               isEnd ? <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> :
+               <Play className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+            </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-lg text-white">{friendlyPhaseName(step.phase)}</span>
+                <span className="font-semibold text-foreground">{friendlyPhaseName(step.phase)}</span>
                 {isResponse && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-warning">
                     RESPONSE
                   </span>
                 )}
                 {isIncomplete && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-warning">
                     ⚠ SIN PHASE_END
                   </span>
                 )}
-                {/* Diff badge en header colapsado */}
                 {!isExpanded && diffCounts && (diffCounts.added > 0 || diffCounts.changed > 0 || diffCounts.removed > 0) && (
                   <span className="flex items-center gap-1 text-[10px] font-mono">
-                    {diffCounts.added > 0 && <span className="text-green-400">+{diffCounts.added}</span>}
-                    {diffCounts.changed > 0 && <span className="text-yellow-400">~{diffCounts.changed}</span>}
-                    {diffCounts.removed > 0 && <span className="text-red-400">-{diffCounts.removed}</span>}
+                    {diffCounts.added > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{diffCounts.added}</span>}
+                    {diffCounts.changed > 0 && <span className="text-amber-600 dark:text-amber-400">~{diffCounts.changed}</span>}
+                    {diffCounts.removed > 0 && <span className="text-red-600 dark:text-red-400">-{diffCounts.removed}</span>}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-center gap-1 text-xs text-gray-400">
+              <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
                   <span>{new Date(step.timestamp).toLocaleTimeString()}</span>
-                  <span className="text-purple-400 font-mono">
+                  <span className="font-mono text-foreground/60">
                     {allSameTs ? `#${ordinal}` : `+${relativeMs}ms`}
                   </span>
                 </div>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                  isError ? "bg-red-500/20 text-red-300" :
-                  isResponseEnd ? "bg-orange-500/20 text-orange-300" :
-                  isResponseStart ? "bg-amber-500/20 text-amber-300" :
-                  isEnd ? "bg-green-500/20 text-green-300" :
-                  "bg-blue-500/20 text-blue-300"
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  isError ? "badge-error" :
+                  isResponseEnd ? "badge-warning" :
+                  isResponseStart ? "badge-warning" :
+                  isEnd ? "badge-success" :
+                  "badge-info"
                 }`}>
                   {step.event.toUpperCase()}
                 </span>
               </div>
             </div>
           </div>
-          <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
-            {isExpanded ? <ChevronDown className="w-5 h-5 text-purple-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+          <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </motion.div>
         </div>
-      </motion.div>
+      </div>
 
       <AnimatePresence>
         {isExpanded && (
@@ -1509,22 +1542,37 @@ function FlowStep({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="border-t border-white/10 bg-black/20"
+            transition={{ duration: 0.25 }}
+            className="border-t border-border bg-muted/20"
           >
-            <div className="p-5 space-y-6">
+            <div className="p-4 space-y-5">
+
+              {/* Body del Request (solo en phase_start) */}
+              {step.request_body && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-primary" /> Body del Request
+                    <span className="text-[10px] text-muted-foreground font-normal">{step.request_body.length} bytes · JSON</span>
+                  </h4>
+                  <div className="bg-muted rounded-lg p-3 overflow-auto max-h-64 border border-border">
+                    <JsonHighlight json={(() => {
+                      try { return JSON.stringify(JSON.parse(step.request_body), null, 2); } catch { return step.request_body; }
+                    })()} />
+                  </div>
+                </div>
+              )}
 
               {/* JWT Claims de esta fase */}
               {step.jwt_claims && Object.keys(step.jwt_claims).length > 0 && (
                 <div>
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 flex items-center gap-2">
-                    <Code className="w-4 h-4" /> JWT Claims de esta fase
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> JWT Claims de esta fase
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {Object.entries(step.jwt_claims).map(([k, v]) => (
-                      <div key={k} className="bg-yellow-500/5 border border-yellow-500/20 rounded px-3 py-2">
-                        <div className="text-[10px] text-gray-400 mb-0.5">{k}</div>
-                        <code className="text-xs text-yellow-300 font-mono break-all">
+                      <div key={k} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-3 py-2">
+                        <div className="text-[10px] text-muted-foreground mb-0.5">{k}</div>
+                        <code className="text-xs text-amber-700 dark:text-amber-400 font-mono break-all">
                           {typeof v === "object" ? JSON.stringify(v) : String(v)}
                         </code>
                       </div>
@@ -1536,8 +1584,8 @@ function FlowStep({
               {/* Diff entre fase anterior y esta (transición) */}
               {filteredPhaseDiff && filteredPhaseDiff.some(r => r.status !== "same") && (
                 <div>
-                  <h4 className="text-sm font-bold text-orange-300 mb-3 flex items-center gap-2">
-                    <Filter className="w-4 h-4" /> Cambios desde fase anterior
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Filter className="w-3.5 h-3.5 text-muted-foreground" /> Cambios desde fase anterior
                   </h4>
                   <div className="space-y-1">
                     {filteredPhaseDiff.filter(r => r.status !== "same").map(r => (
@@ -1559,8 +1607,8 @@ function FlowStep({
               {/* Diff interno: headers_before → headers_after */}
               {filteredInternalDiff && filteredInternalDiff.some(r => r.status !== "same") && (
                 <div>
-                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${isResponse ? "text-orange-300" : "text-cyan-300"}`}>
-                    <Diff className="w-4 h-4" /> {isResponse ? "Transformaciones de Response" : "Transformaciones en esta fase"}
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Diff className="w-3.5 h-3.5 text-muted-foreground" /> {isResponse ? "Transformaciones de Response" : "Transformaciones en esta fase"}
                   </h4>
                   <div className="space-y-1">
                     {filteredInternalDiff.filter(r => r.status !== "same").map(r => (
@@ -1579,11 +1627,11 @@ function FlowStep({
                 </div>
               )}
 
-              {/* Headers Before: solo mostrar en phase_start / response_phase_start (no en *_end donde ya se ve el diff) */}
+              {/* Headers Before */}
               {beforeEntries.length > 0 && !isEnd && !isResponseEnd && (
                 <div>
-                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${isResponse ? "text-amber-300" : "text-purple-300"}`}>
-                    <Layers className="w-4 h-4" /> {isResponse ? "Response Headers (antes)" : "Request Headers"} ({beforeEntries.length})
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-muted-foreground" /> {isResponse ? "Response Headers (antes)" : "Request Headers"} ({beforeEntries.length})
                   </h4>
                   <div className="space-y-1">
                     {beforeEntries.map(([k, v]) => (
@@ -1596,26 +1644,21 @@ function FlowStep({
               {/* Headers After */}
               {afterEntries.length > 0 && (
                 <div>
-                  <h4 className={`text-sm font-bold mb-3 flex items-center gap-2 ${
-                    isResponseEnd ? "text-orange-300" :
-                    isResponseStart ? "text-amber-300" :
-                    "text-green-300"
-                  }`}>
-                    <Layers className="w-4 h-4" /> {
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-muted-foreground" /> {
                       isResponseEnd ? "Response Headers Finales" :
                       isResponseStart ? "Response Headers (después)" :
                       isEnd ? "Headers Finales" : "Response Headers"
                     } ({afterEntries.length})
-                    {/* Resumen de cambios */}
                     {step.headers_before && (() => {
                       const added = afterEntries.filter(([k]) => !(k in step.headers_before)).length;
                       const changed = afterEntries.filter(([k, v]) => k in step.headers_before && step.headers_before[k] !== v).length;
                       const removed = Object.keys(step.headers_before).filter(k => !afterEntries.find(([ak]) => ak === k)).length;
                       return (
                         <span className="flex items-center gap-1 ml-1">
-                          {added > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-500/20 text-green-400">+{added}</span>}
-                          {changed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-yellow-500/20 text-yellow-400">~{changed}</span>}
-                          {removed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400">-{removed}</span>}
+                          {added > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-success">+{added}</span>}
+                          {changed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-warning">~{changed}</span>}
+                          {removed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold badge-error">-{removed}</span>}
                         </span>
                       );
                     })()}
@@ -1636,7 +1679,6 @@ function FlowStep({
                         />
                       );
                     })}
-                    {/* Headers eliminados (estaban en before pero no en after) */}
                     {step.headers_before && Object.entries(step.headers_before)
                       .filter(([k]) => !afterEntries.find(([ak]) => ak === k))
                       .map(([k, v]) => (
@@ -1654,9 +1696,35 @@ function FlowStep({
                 </div>
               )}
 
+              {/* Body de Respuesta del Upstream */}
+              {isResponseEnd && (step.response_body || step.response_body_skipped) && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Code className="w-3.5 h-3.5 text-muted-foreground" /> Body de Respuesta del Upstream
+                    {step.response_body && (
+                      <span className="text-[10px] text-muted-foreground font-normal">{step.response_body.length} bytes · JSON</span>
+                    )}
+                    {step.response_body_skipped && (
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">⚠ no capturado</span>
+                    )}
+                  </h4>
+                  {step.response_body ? (
+                    <div className="bg-muted rounded-lg p-3 overflow-auto max-h-96 border border-border">
+                      <JsonHighlight json={(() => {
+                        try { return JSON.stringify(JSON.parse(step.response_body), null, 2); } catch { return step.response_body; }
+                      })()} />
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
+                      {step.response_body_skipped}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* No headers match search */}
               {search && beforeEntries.length === 0 && afterEntries.length === 0 && (
-                <div className="text-center text-gray-500 text-sm py-4">
+                <div className="text-center text-muted-foreground text-sm py-4">
                   No hay headers que coincidan con "{globalSearch}"
                 </div>
               )}

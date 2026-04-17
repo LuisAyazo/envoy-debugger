@@ -2,192 +2,157 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { 
-  Activity, 
-  Zap, 
-  AlertTriangle, 
+import {
+  Activity,
+  Zap,
+  AlertTriangle,
   TrendingUp,
   Eye,
   BarChart3,
   FileText,
   GitBranch,
-  Sparkles,
   Shield,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Animated Header */}
-      <motion.header 
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, type: "spring" }}
-        className="border-b border-white/10 glass-strong backdrop-blur-xl"
-      >
-        <div className="max-w-screen-2xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <motion.div 
-              className="flex items-center gap-4"
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-pink-500 flex items-center justify-center glow animate-pulse-slow">
-                <Shield className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold gradient-text">Gateway Debugger</h1>
-                <p className="text-sm text-purple-300/80">Univision Real-time Observability</p>
-              </div>
-            </motion.div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg glass glow-green">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-green-300 font-medium">All Systems Operational</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.header>
+      <main className="max-w-screen-2xl mx-auto px-4 py-10 space-y-8">
 
-      {/* Navigation */}
-      <motion.nav 
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-        className="border-b border-white/5 glass"
-      >
-        <div className="max-w-screen-2xl mx-auto px-4">
-          <div className="flex gap-1">
-            <NavLink href="/traces" icon={<Eye className="w-4 h-4" />} label="Traces" />
-            <NavLink href="/metrics" icon={<BarChart3 className="w-4 h-4" />} label="Metrics" />
-            <NavLink href="/logs" icon={<FileText className="w-4 h-4" />} label="Logs" />
-            <NavLink href="/requests" icon={<GitBranch className="w-4 h-4" />} label="Requests" />
-          </div>
-        </div>
-      </motion.nav>
-
-      {/* Main Content */}
-      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-8">
-        {/* Hero Stats */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6"
+          transition={{ duration: 0.4 }}
+          className="text-center py-8"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Real-time Observability
+          </div>
+          <h1 className="text-4xl font-bold text-foreground mb-3">
+            Gateway Debugger
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            Monitoreo y debugging en tiempo real para el gateway de Univision
+          </p>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
           <StatCard
-            icon={<Activity className="w-6 h-6" />}
+            icon={<Activity className="w-5 h-5" />}
             title="Total Traces"
             value="1,234"
             change="+12%"
-            changePositive={true}
-            gradient="from-cyan-500 to-blue-500"
-            delay={0}
+            positive={true}
+            color="blue"
           />
           <StatCard
-            icon={<Zap className="w-6 h-6" />}
+            icon={<Zap className="w-5 h-5" />}
             title="Avg Latency"
             value="45ms"
             change="-8%"
-            changePositive={true}
-            gradient="from-purple-500 to-pink-500"
-            delay={0.1}
+            positive={true}
+            color="emerald"
           />
           <StatCard
-            icon={<AlertTriangle className="w-6 h-6" />}
+            icon={<AlertTriangle className="w-5 h-5" />}
             title="Error Rate"
             value="0.2%"
             change="+0.1%"
-            changePositive={false}
-            gradient="from-orange-500 to-red-500"
-            delay={0.2}
+            positive={false}
+            color="red"
           />
           <StatCard
-            icon={<TrendingUp className="w-6 h-6" />}
+            icon={<TrendingUp className="w-5 h-5" />}
             title="RPS"
             value="1,245"
             change="+5%"
-            changePositive={true}
-            gradient="from-green-500 to-emerald-500"
-            delay={0.3}
+            positive={true}
+            color="amber"
           />
         </motion.div>
 
         {/* Quick Actions */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="glass-strong rounded-2xl p-8 glow"
+          transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <div className="flex items-center gap-3 mb-6">
-            <Sparkles className="w-6 h-6 text-purple-400" />
-            <h2 className="text-2xl font-bold gradient-text">Quick Actions</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            Acceso rápido
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickActionCard
               href="/traces"
-              icon={<Eye className="w-8 h-8" />}
-              title="View Traces"
-              description="See all request traces"
-              gradient="from-cyan-500/20 to-blue-500/20"
+              icon={<Eye className="w-5 h-5" />}
+              title="Traces"
+              description="Ver todos los request traces"
             />
             <QuickActionCard
               href="/metrics"
-              icon={<BarChart3 className="w-8 h-8" />}
-              title="Performance Metrics"
-              description="Latency, throughput, errors"
-              gradient="from-purple-500/20 to-pink-500/20"
+              icon={<BarChart3 className="w-5 h-5" />}
+              title="Metrics"
+              description="Latencia, throughput y errores"
             />
             <QuickActionCard
               href="/logs"
-              icon={<FileText className="w-8 h-8" />}
-              title="View Logs"
-              description="Component logs with search"
-              gradient="from-orange-500/20 to-red-500/20"
+              icon={<FileText className="w-5 h-5" />}
+              title="Logs"
+              description="Logs de componentes con búsqueda"
             />
             <QuickActionCard
               href="/requests"
-              icon={<GitBranch className="w-8 h-8" />}
-              title="Request Flows"
-              description="View all gateway requests"
-              gradient="from-green-500/20 to-emerald-500/20"
+              icon={<GitBranch className="w-5 h-5" />}
+              title="Requests"
+              description="Flujos de requests del gateway"
             />
           </div>
         </motion.div>
 
         {/* Recent Traces */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="glass-strong rounded-2xl p-8"
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="bg-card border border-border rounded-xl overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-cyan-400" />
-              <h2 className="text-2xl font-bold gradient-text">Recent Traces</h2>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h2 className="font-semibold text-foreground">Traces Recientes</h2>
             </div>
-            <Link href="/traces" className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline">
-              View All →
+            <Link
+              href="/traces"
+              className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Ver todos
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className="overflow-hidden rounded-xl border border-white/10">
+          <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-white/5">
-                <tr>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Request ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Method</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Path</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Latency</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-purple-300">Message</th>
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="text-left py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Request ID</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Path</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Latency</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Message</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {[...Array(5)].map((_, i) => (
                   <TraceRow key={i} index={i} />
                 ))}
@@ -195,89 +160,75 @@ export default function Home() {
             </table>
           </div>
         </motion.div>
+
       </main>
     </div>
   );
 }
 
-function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link href={href}>
-      <motion.div
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-2 px-6 py-4 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors border-b-2 border-transparent hover:border-purple-500"
-      >
-        {icon}
-        <span>{label}</span>
-      </motion.div>
-    </Link>
-  );
-}
-
-function StatCard({ 
-  icon, 
-  title, 
-  value, 
-  change, 
-  changePositive, 
-  gradient,
-  delay 
-}: { 
-  icon: React.ReactNode; 
-  title: string; 
-  value: string; 
-  change: string; 
-  changePositive: boolean;
-  gradient: string;
-  delay: number;
+function StatCard({
+  icon,
+  title,
+  value,
+  change,
+  positive,
+  color,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  change: string;
+  positive: boolean;
+  color: "blue" | "emerald" | "red" | "amber";
 }) {
+  const colorMap = {
+    blue: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+    emerald: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20",
+    red: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20",
+    amber: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, delay }}
-      whileHover={{ scale: 1.05, y: -5 }}
-      className="glass-strong rounded-2xl p-6 glow hover:glow-cyan transition-all duration-300"
+      whileHover={{ y: -2 }}
+      className="bg-card border border-border rounded-xl p-5 transition-shadow hover:shadow-md"
     >
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-4 animate-float`}>
+      <div className={`inline-flex p-2 rounded-lg ${colorMap[color]} mb-3`}>
         {icon}
       </div>
-      <div className="text-sm text-gray-400 mb-1">{title}</div>
-      <div className="text-3xl font-bold text-white mb-2">{value}</div>
-      <div className={`text-sm font-medium flex items-center gap-1 ${changePositive ? 'text-green-400' : 'text-red-400'}`}>
-        <TrendingUp className={`w-4 h-4 ${!changePositive && 'rotate-180'}`} />
-        {change} from last hour
+      <div className="text-2xl font-bold text-foreground mb-1">{value}</div>
+      <div className="text-sm text-muted-foreground mb-2">{title}</div>
+      <div className={`text-xs font-medium flex items-center gap-1 ${positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+        <TrendingUp className={`w-3 h-3 ${!positive && "rotate-180"}`} />
+        {change} vs última hora
       </div>
     </motion.div>
   );
 }
 
-function QuickActionCard({ 
-  href, 
-  icon, 
-  title, 
+function QuickActionCard({
+  href,
+  icon,
+  title,
   description,
-  gradient 
-}: { 
-  href: string; 
-  icon: React.ReactNode; 
-  title: string; 
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
   description: string;
-  gradient: string;
 }) {
   return (
     <Link href={href}>
       <motion.div
-        whileHover={{ scale: 1.05, y: -5 }}
+        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className={`glass rounded-xl p-6 hover:glass-strong transition-all duration-300 bg-gradient-to-br ${gradient} border border-white/10 hover:border-purple-400/50 cursor-pointer group`}
+        className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group"
       >
-        <div className="text-purple-400 mb-3 group-hover:scale-110 transition-transform duration-300">
+        <div className="text-primary mb-3 group-hover:scale-110 transition-transform duration-200">
           {icon}
         </div>
-        <h3 className="text-lg font-bold text-white mb-2 group-hover:gradient-text">{title}</h3>
-        <p className="text-sm text-gray-400">{description}</p>
+        <h3 className="font-semibold text-foreground mb-1">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </motion.div>
     </Link>
   );
@@ -285,66 +236,75 @@ function QuickActionCard({
 
 function TraceRow({ index }: { index: number }) {
   const traces = [
-    { id: 'req-success-001', status: '200', method: 'POST', path: '/api/auth/login', latency: '45.2ms', error: null },
-    { id: 'req-video-content', status: '200', method: 'GET', path: '/api/content/video/12345', latency: '125.8ms', error: null },
-    { id: 'req-partial-789', status: '503', method: 'GET', path: '/api/users/profile', latency: '102.5ms', error: 'Service unavailable' },
-    { id: 'req-ratelimit-exceeded', status: '429', method: 'POST', path: '/api/comments', latency: '3.5ms', error: 'Rate limit exceeded' },
-    { id: 'req-def-456', status: '401', method: 'POST', path: '/api/auth', latency: '4.0ms', error: 'JWT expired' },
+    { id: "req-success-001", status: "200", method: "POST", path: "/api/auth/login", latency: "45.2ms", error: null },
+    { id: "req-video-content", status: "200", method: "GET", path: "/api/content/video/12345", latency: "125.8ms", error: null },
+    { id: "req-partial-789", status: "503", method: "GET", path: "/api/users/profile", latency: "102.5ms", error: "Service unavailable" },
+    { id: "req-ratelimit-exceeded", status: "429", method: "POST", path: "/api/comments", latency: "3.5ms", error: "Rate limit exceeded" },
+    { id: "req-def-456", status: "401", method: "POST", path: "/api/auth", latency: "4.0ms", error: "JWT expired" },
   ];
-  
+
   const trace = traces[index];
-  const isError = ['401', '429', '500', '503'].includes(trace.status);
-  
+  const isError = ["401", "429", "500", "503"].includes(trace.status);
+
+  const methodColors: Record<string, string> = {
+    GET: "method-get",
+    POST: "method-post",
+    PUT: "method-put",
+    DELETE: "method-delete",
+  };
+
   return (
     <motion.tr
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
-      className="hover:bg-white/5 transition-colors"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
+      className="hover:bg-muted/40 transition-colors"
     >
-      <td className="py-3 px-4">
+      <td className="py-3 px-6">
         <Link href={`/flow/${trace.id}`}>
-          <code className="text-cyan-400 text-xs hover:text-cyan-300 cursor-pointer">{trace.id}</code>
+          <code className="text-primary text-xs hover:underline cursor-pointer font-mono">
+            {trace.id}
+          </code>
         </Link>
       </td>
       <td className="py-3 px-4">
-        <span className="px-2 py-1 rounded-md bg-blue-500/20 text-blue-300 text-xs font-semibold">
+        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${methodColors[trace.method] || "badge-neutral"}`}>
           {trace.method}
         </span>
       </td>
-      <td className="py-3 px-4 text-sm text-gray-300">{trace.path}</td>
+      <td className="py-3 px-4 text-sm text-muted-foreground font-mono">{trace.path}</td>
       <td className="py-3 px-4">
         {isError ? (
-          <span className="flex items-center gap-2 px-2 py-1 rounded-md bg-red-500/20 text-red-300 text-xs font-semibold w-fit glow-red">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold badge-error">
             <AlertTriangle className="w-3 h-3" />
             {trace.status}
           </span>
         ) : (
-          <span className="flex items-center gap-2 px-2 py-1 rounded-md bg-green-500/20 text-green-300 text-xs font-semibold w-fit">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold badge-success">
             <CheckCircle2 className="w-3 h-3" />
             {trace.status}
           </span>
         )}
       </td>
       <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-300">{trace.latency}</span>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-sm font-mono ${parseFloat(trace.latency) > 100 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+            {trace.latency}
+          </span>
           {parseFloat(trace.latency) > 100 && (
-            <Zap className="w-3 h-3 text-yellow-400" />
+            <Zap className="w-3 h-3 text-amber-500" />
           )}
         </div>
       </td>
       <td className="py-3 px-4">
-        <div className="text-sm text-gray-400">
-          {trace.error ? (
-            <span className="text-red-400 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              {trace.error}
-            </span>
-          ) : (
-            <span className="text-green-400">Success</span>
-          )}
-        </div>
+        {trace.error ? (
+          <span className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+            {trace.error}
+          </span>
+        ) : (
+          <span className="text-sm text-emerald-600 dark:text-emerald-400">Success</span>
+        )}
       </td>
     </motion.tr>
   );

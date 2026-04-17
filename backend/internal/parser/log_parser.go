@@ -203,6 +203,14 @@ func (p *LogParser) parseLuaLog(line string, raw rawLine) *storage.LuaLogFields 
 		}
 	}
 
+	// Extraer request_body (solo en phase_start, JSON <= 32KB)
+	if v, ok := full["request_body"]; ok {
+		var bodyStr string
+		if err := json.Unmarshal(v, &bodyStr); err == nil && bodyStr != "" {
+			lua.RequestBody = bodyStr
+		}
+	}
+
 	// Extraer response_body (solo en response_phase_end, JSON <= 32KB)
 	if v, ok := full["response_body"]; ok {
 		var bodyStr string

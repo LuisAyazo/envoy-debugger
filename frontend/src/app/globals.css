@@ -3,68 +3,213 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Light theme */
+    --background: 0 0% 98%;
+    --foreground: 222 20% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 20% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 20% 12%;
+
+    --primary: 213 94% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 16% 92%;
+    --secondary-foreground: 222 20% 20%;
+
+    --muted: 215 16% 94%;
+    --muted-foreground: 215 14% 48%;
+
+    --accent: 213 94% 95%;
+    --accent-foreground: 213 94% 30%;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 72% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 215 16% 88%;
+    --input: 215 16% 88%;
+    --ring: 213 94% 48%;
+    --radius: 0.5rem;
+
+    /* Surface layers */
+    --surface-1: 0 0% 100%;
+    --surface-2: 215 16% 97%;
+    --surface-3: 215 16% 94%;
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: 222 22% 9%;
+    --foreground: 215 20% 90%;
+
+    --card: 222 22% 12%;
+    --card-foreground: 215 20% 90%;
+
+    --popover: 222 22% 12%;
+    --popover-foreground: 215 20% 90%;
+
+    --primary: 213 94% 58%;
+    --primary-foreground: 222 22% 9%;
+
+    --secondary: 222 18% 18%;
+    --secondary-foreground: 215 20% 80%;
+
+    --muted: 222 18% 16%;
+    --muted-foreground: 215 14% 52%;
+
+    --accent: 213 60% 18%;
+    --accent-foreground: 213 94% 72%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 80% 52%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 222 18% 20%;
+    --input: 222 18% 20%;
+    --ring: 213 94% 58%;
+
+    /* Surface layers */
+    --surface-1: 222 22% 12%;
+    --surface-2: 222 22% 15%;
+    --surface-3: 222 18% 18%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
   body {
-    @apply bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white min-h-screen;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Superficies */
+  .surface-1 {
+    background-color: hsl(var(--surface-1));
+    border: 1px solid hsl(var(--border));
   }
-  
-  .glass-strong {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+  .surface-2 {
+    background-color: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border));
   }
-  
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400;
+  .surface-3 {
+    background-color: hsl(var(--surface-3));
+    border: 1px solid hsl(var(--border));
   }
-  
-  .glow {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3),
-                0 0 40px rgba(139, 92, 246, 0.2),
-                0 0 60px rgba(139, 92, 246, 0.1);
+
+  /* Cards */
+  .card-base {
+    @apply bg-card text-card-foreground border border-border rounded-xl;
   }
-  
-  .glow-green {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3),
-                0 0 40px rgba(34, 197, 94, 0.2);
-  }
-  
-  .glow-red {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3),
-                0 0 40px rgba(239, 68, 68, 0.2);
-  }
-  
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(34, 211, 238, 0.3),
-                0 0 40px rgba(34, 211, 238, 0.2);
-  }
-  
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
-  }
-  
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  
+
+  /* Subtle grid background */
   .grid-bg {
-    background-image: 
-      linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
-    background-size: 50px 50px;
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Status colors — semánticos */
+  .status-success {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  .status-error {
+    @apply text-red-600 dark:text-red-400;
+  }
+  .status-warning {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+  .status-info {
+    @apply text-blue-600 dark:text-blue-400;
+  }
+  .status-pending {
+    @apply text-sky-600 dark:text-sky-400;
+  }
+
+  /* Badge variants */
+  .badge-success {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800;
+  }
+  .badge-error {
+    @apply bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800;
+  }
+  .badge-warning {
+    @apply bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800;
+  }
+  .badge-info {
+    @apply bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800;
+  }
+  .badge-neutral {
+    @apply bg-muted text-muted-foreground border border-border;
+  }
+
+  /* Method badges */
+  .method-get {
+    @apply bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800;
+  }
+  .method-post {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800;
+  }
+  .method-put {
+    @apply bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800;
+  }
+  .method-delete {
+    @apply bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800;
+  }
+  .method-patch {
+    @apply bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800;
+  }
+
+  /* Input base */
+  .input-base {
+    @apply bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-colors;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+  }
+  .btn-ghost {
+    @apply hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+  }
+
+  /* Code / mono */
+  .code-inline {
+    @apply font-mono text-xs bg-muted text-foreground px-1.5 py-0.5 rounded;
+  }
+
+  /* Header diff colors */
+  .diff-added {
+    @apply bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800;
+  }
+  .diff-removed {
+    @apply bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800;
+  }
+  .diff-changed {
+    @apply bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800;
+  }
+  .diff-same {
+    @apply bg-muted/50;
   }
 }

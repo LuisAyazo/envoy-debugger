@@ -66,6 +66,9 @@ type PhaseLog struct {
 	// JWT claims si este evento los contiene
 	JWTClaims map[string]interface{} `json:"jwt_claims,omitempty"`
 
+	// Body del request del cliente (solo en phase_start, JSON <= 32KB)
+	RequestBody string `json:"request_body,omitempty"`
+
 	// Body de la respuesta del upstream (solo en response_phase_end, JSON <= 32KB)
 	ResponseBody string `json:"response_body,omitempty"`
 	// Mensaje cuando el body existe pero supera 32KB y no fue capturado
@@ -160,6 +163,7 @@ type LuaLogFields struct {
 	HeadersBefore       map[string]string      `json:"headers_before,omitempty"`
 	HeadersAfter        map[string]string      `json:"headers_after,omitempty"`
 	JWTClaims           map[string]interface{} `json:"jwt_claims,omitempty"`
+	RequestBody         string                 `json:"request_body,omitempty"`
 	ResponseBody        string                 `json:"response_body,omitempty"`
 	ResponseBodySkipped string                 `json:"response_body_skipped,omitempty"`
 }

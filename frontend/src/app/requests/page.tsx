@@ -55,34 +55,35 @@ interface Stats {
   avg_duration: number;
 }
 
-// Patrones de bots/scanners conocidos
 const BOT_PATH_PATTERNS = [
-  // Extensiones de archivos de servidor
   /\.php(\?|$)/i, /\.asp(\?|$)/i, /\.aspx(\?|$)/i, /\.cgi(\?|$)/i, /\.env(\?|$)/i,
   /\.git\//i, /\.svn\//i, /\.htaccess/i, /\.htpasswd/i,
-  // CMS y exploits conocidos
   /wp-/i, /wordpress/i, /xmlrpc/i, /phpmyadmin/i,
   /admin\.php/i, /shell\.php/i, /wso/i, /c99/i, /r57/i,
   /eval-stdin/i, /setup-config/i, /classc/i, /cibai/i,
   /kaza/i, /HLA-/i, /ccv/i, /x569/i,
-  // Exploits de frameworks
   /\/index\.php\?s=/i, /\/index\.php\?lang=/i, /invokefunction/i, /call_user_func/i,
   /think\\app/i, /thinkphp/i,
-  // Inyecciones y traversal
   /allow_url_include/i, /auto_prepend_file/i, /php:\/\/input/i,
   /\.\.\/\.\.\/\.\.\//i, /\/etc\/passwd/i, /\/proc\//i,
-  // Paths de bots de infraestructura
   /\/containers\/json/i, /\/v\d+\.\d+\/containers/i,
-  // Encoding de bots
   /%%32/i, /%2e%2e/i, /cgi-bin/i,
-  // Paths de exploits genéricos
   /\/hello\.world/i, /\/public\/index\.php/i,
-  // Rutas raíz con query strings de exploit
   /^\/?%/,
 ];
 
 function isBot(path: string): boolean {
   return BOT_PATH_PATTERNS.some((re) => re.test(path));
+}
+
+function getMethodClass(method: string): string {
+  switch (method) {
+    case "GET": return "method-get";
+    case "POST": return "method-post";
+    case "PUT": return "method-put";
+    case "DELETE": return "method-delete";
+    default: return "badge-neutral";
+  }
 }
 
 export default function RequestsPage() {
@@ -122,28 +123,23 @@ export default function RequestsPage() {
     }
   }, []);
 
-  // Carga inicial
   useEffect(() => {
     fetchRequests();
     fetchStats();
   }, [fetchRequests, fetchStats]);
 
-  // Refs para evitar acumulación de WebSockets
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveModeRef = useRef(liveMode);
   const fetchRequestsRef = useRef(fetchRequests);
   const fetchStatsRef = useRef(fetchStats);
 
-  // Mantener refs actualizados sin re-crear el efecto
   useEffect(() => { liveModeRef.current = liveMode; }, [liveMode]);
   useEffect(() => { fetchRequestsRef.current = fetchRequests; }, [fetchRequests]);
   useEffect(() => { fetchStatsRef.current = fetchStats; }, [fetchStats]);
 
-  // WebSocket para actualizaciones en tiempo real
   useEffect(() => {
     if (!liveMode) {
-      // Cerrar conexión existente si se desactiva liveMode
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
       wsRef.current = null;
@@ -153,9 +149,8 @@ export default function RequestsPage() {
     const wsUrl = API_BASE.replace("http://", "ws://").replace("https://", "wss://");
 
     const connect = () => {
-      // Cerrar conexión previa antes de abrir una nueva
       if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-        wsRef.current.onclose = null; // evitar reconexión automática al cerrar manualmente
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
 
@@ -163,9 +158,7 @@ export default function RequestsPage() {
         const ws = new WebSocket(`${wsUrl}/api/ws`);
         wsRef.current = ws;
 
-        ws.onopen = () => {
-          setWsConnected(true);
-        };
+        ws.onopen = () => { setWsConnected(true); };
 
         ws.onmessage = (event) => {
           try {
@@ -184,10 +177,8 @@ export default function RequestsPage() {
           }
         };
 
-        ws.onerror = () => {
-          setWsConnected(false);
-        };
-      } catch (err) {
+        ws.onerror = () => { setWsConnected(false); };
+      } catch {
         setWsConnected(false);
       }
     };
@@ -197,14 +188,13 @@ export default function RequestsPage() {
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
-        wsRef.current.onclose = null; // evitar reconexión al desmontar
+        wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
     };
-  }, [liveMode]); // Solo depende de liveMode, no de los callbacks
+  }, [liveMode]);
 
-  // Polling fallback si no hay WebSocket
   useEffect(() => {
     if (!liveMode || wsConnected) return;
     const interval = setInterval(() => {
@@ -226,40 +216,38 @@ export default function RequestsPage() {
       (statusFilter === "error" && req.status_code >= 400) ||
       (statusFilter === "pending" && !req.access_log_received);
 
-    // Filtro por status code exacto (si el usuario escribió algo)
     const trimmed = customStatus.trim();
     const matchesCustomStatus =
       trimmed === "" ||
       String(req.status_code) === trimmed ||
       (trimmed.endsWith("xx") && String(req.status_code).startsWith(trimmed[0]));
 
-    // Excluir bots/scanners
     const notBot = !excludeBots || !isBot(req.path || "");
 
     return matchesSearch && matchesStatus && matchesCustomStatus && notBot;
   });
 
   function getStatusIcon(status: number) {
-    if (!status) return <Activity className="w-5 h-5 text-blue-400 animate-pulse" />;
-    if (status >= 200 && status < 300) return <CheckCircle className="w-5 h-5 text-green-400" />;
-    if (status >= 400 && status < 500) return <XCircle className="w-5 h-5 text-red-400" />;
-    if (status >= 500) return <AlertTriangle className="w-5 h-5 text-orange-400" />;
-    return <Activity className="w-5 h-5 text-blue-400" />;
+    if (!status) return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
+    if (status >= 200 && status < 300) return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+    if (status >= 400 && status < 500) return <XCircle className="w-4 h-4 text-red-500" />;
+    if (status >= 500) return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+    return <Activity className="w-4 h-4 text-blue-500" />;
   }
 
-  function getStatusColor(status: number) {
-    if (!status) return "text-blue-400 bg-blue-500/10 border-blue-500/20";
-    if (status >= 200 && status < 300) return "text-green-400 bg-green-500/10 border-green-500/20";
-    if (status >= 400 && status < 500) return "text-red-400 bg-red-500/10 border-red-500/20";
-    if (status >= 500) return "text-orange-400 bg-orange-500/10 border-orange-500/20";
-    return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+  function getStatusClass(status: number): string {
+    if (!status) return "badge-info";
+    if (status >= 200 && status < 300) return "badge-success";
+    if (status >= 400 && status < 500) return "badge-error";
+    if (status >= 500) return "badge-warning";
+    return "badge-info";
   }
 
-  function getDurationColor(ms: number) {
-    if (!ms) return "text-gray-400";
-    if (ms < 50) return "text-green-400";
-    if (ms < 200) return "text-yellow-400";
-    return "text-red-400";
+  function getDurationClass(ms: number): string {
+    if (!ms) return "text-muted-foreground";
+    if (ms < 50) return "text-emerald-600 dark:text-emerald-400";
+    if (ms < 200) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
   }
 
   function formatTime(ts: string) {
@@ -276,114 +264,109 @@ export default function RequestsPage() {
     return id.length > 16 ? `${id.substring(0, 8)}…${id.substring(id.length - 4)}` : id;
   }
 
+  const filterButtons = [
+    { key: "all", label: "Todos" },
+    { key: "success", label: "2xx" },
+    { key: "error", label: "4xx/5xx" },
+    { key: "pending", label: "Pendientes" },
+  ];
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
-      >
-        <div className="max-w-screen-2xl mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      {/* Sub-header */}
+      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
+        <div className="max-w-screen-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
               <Link href="/">
-                <motion.button
-                  whileHover={{ scale: 1.1, x: -5 }}
-                  className="w-10 h-10 rounded-xl glass hover:glass-strong flex items-center justify-center glow-cyan"
-                >
-                  <ArrowLeft className="w-5 h-5 text-cyan-400" />
-                </motion.button>
+                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">Live Request Monitor</h1>
-                <p className="text-sm text-purple-300/60">
+                <h1 className="text-lg font-semibold text-foreground">Live Request Monitor</h1>
+                <p className="text-xs text-muted-foreground">
                   Correlación real de logs Envoy por request_id
                   {lastUpdate && (
-                    <span className="ml-2 text-gray-500">
+                    <span className="ml-2">
                       · actualizado {lastUpdate.toLocaleTimeString("es-CO", { hour12: false })}
                     </span>
                   )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2">
               {/* Stats rápidas */}
               {stats && (
-                <div className="flex gap-3">
-                  <div className="px-3 py-2 rounded-lg glass-strong text-xs text-center">
-                    <div className="text-cyan-400 font-bold text-lg">{stats.total}</div>
-                    <div className="text-gray-400">Total</div>
+                <div className="flex gap-2">
+                  <div className="px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-center">
+                    <div className="font-bold text-foreground">{stats.total}</div>
+                    <div className="text-muted-foreground">Total</div>
                   </div>
-                  <div className="px-3 py-2 rounded-lg glass-strong text-xs text-center">
-                    <div className="text-red-400 font-bold text-lg">{stats.errors}</div>
-                    <div className="text-gray-400">Errores</div>
+                  <div className="px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-center">
+                    <div className="font-bold text-red-600 dark:text-red-400">{stats.errors}</div>
+                    <div className="text-muted-foreground">Errores</div>
                   </div>
-                  <div className="px-3 py-2 rounded-lg glass-strong text-xs text-center">
-                    <div className="text-purple-400 font-bold text-lg">{stats.avg_duration}ms</div>
-                    <div className="text-gray-400">Avg</div>
+                  <div className="px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-center">
+                    <div className="font-bold text-blue-600 dark:text-blue-400">{stats.avg_duration}ms</div>
+                    <div className="text-muted-foreground">Avg</div>
                   </div>
                 </div>
               )}
 
               {/* Live toggle */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={() => setLiveMode(!liveMode)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   liveMode
-                    ? "glass-strong border-2 border-green-400 text-green-300"
-                    : "glass text-gray-400 hover:text-white"
+                    ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {wsConnected ? (
-                  <Wifi className="w-4 h-4 text-green-400" />
+                  <Wifi className="w-3.5 h-3.5" />
                 ) : (
-                  <WifiOff className="w-4 h-4 text-yellow-400" />
+                  <WifiOff className="w-3.5 h-3.5" />
                 )}
                 <span>{liveMode ? "Live" : "Paused"}</span>
-              </motion.button>
+              </button>
 
-              {/* Refresh manual */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              {/* Refresh */}
+              <button
                 onClick={() => { fetchRequests(); fetchStats(); }}
-                className="w-10 h-10 rounded-xl glass hover:glass-strong flex items-center justify-center"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
               >
-                <RefreshCw className="w-4 h-4 text-cyan-400" />
-              </motion.button>
+                <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
             </div>
           </div>
         </div>
-      </motion.header>
+      </div>
 
-      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-4">
         {/* Filtros */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-strong rounded-2xl p-6"
+          className="bg-card border border-border rounded-xl p-4"
         >
-          <div className="flex flex-wrap gap-4">
-            {/* Búsqueda por texto */}
-            <div className="flex-1 min-w-[260px]">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar por path, método o request_id..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                />
-              </div>
+          <div className="flex flex-wrap gap-3">
+            {/* Búsqueda */}
+            <div className="flex-1 min-w-[240px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar por path, método o request_id..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-base w-full pl-9"
+              />
             </div>
 
-            {/* Filtro por status code exacto */}
-            <div className="relative w-36">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            {/* Status code exacto */}
+            <div className="relative w-32">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Status: 200"
@@ -393,68 +376,63 @@ export default function RequestsPage() {
                   if (e.target.value.trim() !== "") setStatusFilter("all");
                 }}
                 maxLength={3}
-                className="w-full pl-9 pr-3 py-3 bg-black/40 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 font-mono"
+                className="input-base w-full pl-9 font-mono"
               />
             </div>
 
-            {/* Botones de filtro por rango */}
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: "all", label: "Todos", color: "cyan" },
-                { key: "success", label: "2xx", color: "green" },
-                { key: "error", label: "4xx/5xx", color: "red" },
-                { key: "pending", label: "Pendientes", color: "yellow" },
-              ].map(({ key, label, color }) => (
-                <motion.button
+            {/* Filtros por rango */}
+            <div className="flex gap-1.5 flex-wrap">
+              {filterButtons.map(({ key, label }) => (
+                <button
                   key={key}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => { setStatusFilter(key); setCustomStatus(""); }}
-                  className={`px-4 py-3 rounded-xl font-semibold transition-all ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     statusFilter === key && customStatus === ""
-                      ? `glass-strong border-2 border-${color}-400 text-white`
-                      : "glass text-gray-400 hover:text-white"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
                   }`}
                 >
                   {label}
-                </motion.button>
+                </button>
               ))}
 
-              {/* Toggle excluir bots */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              {/* Toggle bots */}
+              <button
                 onClick={() => setExcludeBots(!excludeBots)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   excludeBots
-                    ? "glass-strong border-2 border-orange-400 text-orange-300"
-                    : "glass text-gray-400 hover:text-white"
+                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
-                title="Ocultar requests de bots/scanners (.php, wp-, etc.)"
+                title="Ocultar requests de bots/scanners"
               >
-                <Bug className="w-4 h-4" />
+                <Bug className="w-3.5 h-3.5" />
                 <span>Sin bots</span>
-              </motion.button>
+              </button>
             </div>
           </div>
 
-          {/* Contador de resultados */}
-          <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+          {/* Contador */}
+          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             <span>
-              Mostrando <span className="text-cyan-400 font-bold">{filteredRequests.length}</span> de{" "}
-              <span className="text-white font-bold">{requests.length}</span> requests
+              Mostrando{" "}
+              <span className="text-foreground font-semibold">{filteredRequests.length}</span>
+              {" "}de{" "}
+              <span className="text-foreground font-semibold">{requests.length}</span>
+              {" "}requests
             </span>
             {excludeBots && (
-              <span className="text-orange-400">
+              <span className="text-amber-600 dark:text-amber-400">
                 · {requests.filter((r) => isBot(r.path || "")).length} bots ocultos
               </span>
             )}
             {customStatus.trim() !== "" && (
-              <span className="text-purple-400">
-                · filtrando status <span className="font-mono font-bold">{customStatus}</span>
+              <span>
+                · filtrando status{" "}
+                <code className="font-mono font-bold text-foreground">{customStatus}</code>
                 <button
                   onClick={() => setCustomStatus("")}
-                  className="ml-1 text-gray-500 hover:text-white"
+                  className="ml-1 hover:text-foreground"
                 >✕</button>
               </span>
             )}
@@ -464,8 +442,8 @@ export default function RequestsPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <div className="flex items-center gap-3 text-cyan-400">
-              <RefreshCw className="w-6 h-6 animate-spin" />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="w-5 h-5 animate-spin" />
               <span>Conectando al backend...</span>
             </div>
           </div>
@@ -473,52 +451,39 @@ export default function RequestsPage() {
 
         {/* Lista de requests */}
         {!loading && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredRequests.map((req, idx) => (
               <motion.div
                 key={req.request_id}
-                initial={{ opacity: 0, x: -30 }}
+                initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: Math.min(idx * 0.03, 0.3) }}
+                transition={{ delay: Math.min(idx * 0.02, 0.2) }}
               >
                 <Link href={`/flow/${encodeURIComponent(req.request_id)}`}>
-                  <motion.div
-                    whileHover={{ scale: 1.01, x: 6 }}
-                    className={`glass-strong rounded-2xl p-5 cursor-pointer border-l-4 ${
+                  <div
+                    className={`bg-card border rounded-xl p-4 cursor-pointer border-l-4 hover:shadow-md transition-all ${
                       !req.access_log_received
-                        ? "border-blue-500/50"
+                        ? "border-l-blue-400 dark:border-l-blue-500"
                         : req.status_code >= 200 && req.status_code < 300
-                        ? "border-green-500/50"
+                        ? "border-l-emerald-400 dark:border-l-emerald-500"
                         : req.status_code >= 400
-                        ? "border-red-500/50"
-                        : "border-orange-500/50"
-                    }`}
+                        ? "border-l-red-400 dark:border-l-red-500"
+                        : "border-l-amber-400 dark:border-l-amber-500"
+                    } border-border hover:border-primary/30`}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      {/* Izquierda: status + método + path */}
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                      {/* Izquierda */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         {getStatusIcon(req.status_code)}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <span
-                              className={`px-2 py-0.5 rounded-lg font-bold text-xs flex-shrink-0 ${
-                                req.method === "GET"
-                                  ? "bg-blue-500/20 text-blue-300"
-                                  : req.method === "POST"
-                                  ? "bg-green-500/20 text-green-300"
-                                  : req.method === "PUT"
-                                  ? "bg-yellow-500/20 text-yellow-300"
-                                  : req.method === "DELETE"
-                                  ? "bg-red-500/20 text-red-300"
-                                  : "bg-purple-500/20 text-purple-300"
-                              }`}
-                            >
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 ${getMethodClass(req.method)}`}>
                               {req.method || "?"}
                             </span>
-                            <code className="text-white font-semibold truncate">{req.path || "—"}</code>
+                            <code className="text-foreground font-semibold text-sm truncate">{req.path || "—"}</code>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
-                            <span className="font-mono text-gray-500" title={req.request_id}>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-mono" title={req.request_id}>
                               {shortID(req.request_id)}
                             </span>
                             <span>·</span>
@@ -527,7 +492,7 @@ export default function RequestsPage() {
                             {req.authority && (
                               <>
                                 <span>·</span>
-                                <span className="text-purple-400">{req.authority}</span>
+                                <span className="text-foreground/60">{req.authority}</span>
                               </>
                             )}
                           </div>
@@ -535,32 +500,29 @@ export default function RequestsPage() {
                       </div>
 
                       {/* Centro: métricas */}
-                      <div className="flex items-center gap-6 flex-shrink-0">
-                        {/* Status code */}
+                      <div className="flex items-center gap-4 flex-shrink-0">
                         <div className="text-center">
-                          <div className={`text-xl font-bold ${getStatusColor(req.status_code)}`}>
+                          <div className={`text-base font-bold px-2 py-0.5 rounded text-xs ${getStatusClass(req.status_code)}`}>
                             {req.status_code || "…"}
                           </div>
-                          <div className="text-xs text-gray-500">status</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">status</div>
                         </div>
 
-                        {/* Duración */}
                         <div className="text-center">
-                          <div className={`text-xl font-bold ${getDurationColor(req.duration_ms)}`}>
+                          <div className={`text-base font-bold ${getDurationClass(req.duration_ms)}`}>
                             {req.duration_ms ? `${req.duration_ms}ms` : "…"}
                           </div>
-                          <div className="text-xs text-gray-500">duración</div>
+                          <div className="text-[10px] text-muted-foreground">duración</div>
                         </div>
 
-                        {/* Fases */}
                         <div className="text-center">
-                          <div className="text-xl font-bold text-purple-400">
+                          <div className="text-base font-bold text-foreground">
                             {req.phases?.length || 0}
                           </div>
-                          <div className="text-xs text-gray-500">fases</div>
+                          <div className="text-[10px] text-muted-foreground">fases</div>
                         </div>
 
-                        {/* JWT — detectar desde jwt_claims O desde request_headers */}
+                        {/* JWT badge */}
                         {(() => {
                           const hasJwtClaims = req.jwt_claims && Object.keys(req.jwt_claims).length > 0;
                           const hasJwtInHeaders = req.request_headers && Object.values(req.request_headers).some(v =>
@@ -568,38 +530,38 @@ export default function RequestsPage() {
                           );
                           if (!hasJwtClaims && !hasJwtInHeaders) return null;
                           return (
-                            <div className="px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-300 font-semibold">
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold badge-warning">
                               JWT ✓
-                            </div>
+                            </span>
                           );
                         })()}
 
                         {/* Errores */}
                         {req.errors && req.errors.length > 0 && (
-                          <div className="px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 font-semibold">
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold badge-error">
                             {req.errors.length} error{req.errors.length > 1 ? "es" : ""}
-                          </div>
+                          </span>
                         )}
 
                         {/* Upstream */}
                         {req.upstream_cluster && (
-                          <div className="hidden lg:block text-xs text-gray-500 max-w-[120px] truncate" title={req.upstream_cluster}>
+                          <div className="hidden lg:block text-xs text-muted-foreground max-w-[120px] truncate" title={req.upstream_cluster}>
                             → {req.upstream_cluster}
                           </div>
                         )}
 
-                        {/* Pending indicator */}
+                        {/* Pending */}
                         {!req.access_log_received && (
-                          <div className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 animate-pulse">
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold badge-info animate-pulse">
                             en curso
-                          </div>
+                          </span>
                         )}
                       </div>
 
-                      {/* Derecha: ver */}
-                      <Eye className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                      {/* Derecha */}
+                      <Eye className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     </div>
-                  </motion.div>
+                  </div>
                 </Link>
               </motion.div>
             ))}
@@ -609,21 +571,21 @@ export default function RequestsPage() {
         {/* Empty state */}
         {!loading && filteredRequests.length === 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-strong rounded-2xl p-16 text-center"
+            className="bg-card border border-border rounded-xl p-16 text-center"
           >
-            <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-400 mb-2">
+            <BarChart3 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               {requests.length === 0 ? "Esperando requests..." : "No hay resultados"}
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               {requests.length === 0
                 ? "El sistema está listo. Envía requests al gateway para verlos aquí."
                 : "Ajusta los filtros de búsqueda."}
             </p>
             {requests.length === 0 && (
-              <div className="text-xs text-gray-600 font-mono bg-black/30 rounded-lg p-4 inline-block">
+              <div className="text-xs text-muted-foreground font-mono bg-muted rounded-lg p-4 inline-block">
                 Activa K8S_STREAMER_ENABLED=true en el backend<br />
                 o usa POST /api/logs para enviar logs manualmente
               </div>

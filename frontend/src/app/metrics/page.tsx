@@ -39,152 +39,199 @@ export default function MetricsPage() {
     { time: "23:59", errors: 1, rate: 0.1 },
   ];
 
+  // Colores para los charts — compatibles con ambos temas
+  const chartColors = {
+    p50: "#3b82f6",
+    p95: "#f59e0b",
+    p99: "#ef4444",
+    rps: "#10b981",
+    error: "#ef4444",
+    grid: "hsl(215 16% 88%)",
+    axis: "hsl(215 14% 48%)",
+    tooltip: {
+      bg: "hsl(0 0% 100%)",
+      border: "hsl(215 16% 88%)",
+    },
+  };
+
   return (
     <div className="min-h-screen">
-      <motion.header 
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
-      >
-        <div className="max-w-screen-2xl mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      {/* Sub-header */}
+      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
+        <div className="max-w-screen-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
               <Link href="/">
-                <motion.button 
-                  whileHover={{ scale: 1.1, x: -5 }}
-                  className="w-10 h-10 rounded-xl glass hover:glass-strong flex items-center justify-center glow-cyan"
-                >
-                  <ArrowLeft className="w-5 h-5 text-cyan-400" />
-                </motion.button>
+                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">Performance Metrics</h1>
-                <p className="text-sm text-purple-300/60">Real-time performance analytics</p>
+                <h1 className="text-lg font-semibold text-foreground">Performance Metrics</h1>
+                <p className="text-xs text-muted-foreground">Análisis de rendimiento en tiempo real</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {["1h", "6h", "24h", "7d"].map((range) => (
-                <motion.button
+                <button
                   key={range}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => setTimeRange(range)}
-                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     timeRange === range
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white glow"
-                      : "glass text-gray-300 hover:glass-strong"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {range}
-                </motion.button>
+                </button>
               ))}
             </div>
           </div>
         </div>
-      </motion.header>
+      </div>
 
-      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-6">
         {/* Key Metrics Cards */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
-          <MetricCard icon={<Clock className="w-6 h-6" />} title="Avg Latency" value="42ms" change="-8%" gradient="from-cyan-500 to-blue-500" />
-          <MetricCard icon={<Activity className="w-6 h-6" />} title="Throughput" value="1.2K RPS" change="+15%" gradient="from-purple-500 to-pink-500" />
-          <MetricCard icon={<AlertTriangle className="w-6 h-6" />} title="Error Rate" value="0.23%" change="+0.05%" gradient="from-orange-500 to-red-500" isNegative />
-          <MetricCard icon={<Zap className="w-6 h-6" />} title="P99 Latency" value="135ms" change="-12%" gradient="from-green-500 to-emerald-500" />
+          <MetricCard
+            icon={<Clock className="w-5 h-5" />}
+            title="Avg Latency"
+            value="42ms"
+            change="-8%"
+            color="blue"
+          />
+          <MetricCard
+            icon={<Activity className="w-5 h-5" />}
+            title="Throughput"
+            value="1.2K RPS"
+            change="+15%"
+            color="emerald"
+          />
+          <MetricCard
+            icon={<AlertTriangle className="w-5 h-5" />}
+            title="Error Rate"
+            value="0.23%"
+            change="+0.05%"
+            color="red"
+            isNegative
+          />
+          <MetricCard
+            icon={<Zap className="w-5 h-5" />}
+            title="P99 Latency"
+            value="135ms"
+            change="-12%"
+            color="amber"
+          />
         </motion.div>
 
         {/* Latency Chart */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-strong rounded-2xl p-8 glow"
+          className="bg-card border border-border rounded-xl p-6"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <Clock className="w-6 h-6 text-cyan-400" />
-            <h2 className="text-2xl font-bold gradient-text">Request Latency Distribution</h2>
+          <div className="flex items-center gap-2 mb-5">
+            <Clock className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground">Request Latency Distribution</h2>
           </div>
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={latencyData}>
               <defs>
                 <linearGradient id="colorP50" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={chartColors.p50} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={chartColors.p50} stopOpacity={0}/>
                 </linearGradient>
                 <linearGradient id="colorP95" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={chartColors.p95} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={chartColors.p95} stopOpacity={0}/>
                 </linearGradient>
                 <linearGradient id="colorP99" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={chartColors.p99} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={chartColors.p99} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" />
-              <YAxis stroke="rgba(255,255,255,0.5)" />
-              <Tooltip contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }} />
-              <Area type="monotone" dataKey="p50" stroke="#06b6d4" fillOpacity={1} fill="url(#colorP50)" strokeWidth={2} />
-              <Area type="monotone" dataKey="p95" stroke="#a855f7" fillOpacity={1} fill="url(#colorP95)" strokeWidth={2} />
-              <Area type="monotone" dataKey="p99" stroke="#ec4899" fillOpacity={1} fill="url(#colorP99)" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis dataKey="time" stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+              <YAxis stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: chartColors.tooltip.bg,
+                  border: `1px solid ${chartColors.tooltip.border}`,
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                }}
+              />
+              <Area type="monotone" dataKey="p50" stroke={chartColors.p50} fillOpacity={1} fill="url(#colorP50)" strokeWidth={2} />
+              <Area type="monotone" dataKey="p95" stroke={chartColors.p95} fillOpacity={1} fill="url(#colorP95)" strokeWidth={2} />
+              <Area type="monotone" dataKey="p99" stroke={chartColors.p99} fillOpacity={1} fill="url(#colorP99)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-          <div className="flex justify-center gap-8 mt-6">
-            <LegendItem color="bg-cyan-500" label="P50 Median" />
-            <LegendItem color="bg-purple-500" label="P95 Percentile" />
-            <LegendItem color="bg-pink-500" label="P99 Percentile" />
+          <div className="flex justify-center gap-6 mt-4">
+            <LegendItem color="bg-blue-500" label="P50 Median" />
+            <LegendItem color="bg-amber-500" label="P95 Percentile" />
+            <LegendItem color="bg-red-500" label="P99 Percentile" />
           </div>
         </motion.div>
 
         {/* Throughput & Errors */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass-strong rounded-2xl p-8"
+            className="bg-card border border-border rounded-xl p-6"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <TrendingUp className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-bold gradient-text">Throughput</h2>
+            <div className="flex items-center gap-2 mb-5">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h2 className="font-semibold text-foreground">Throughput</h2>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={throughputData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" />
-                <YAxis stroke="rgba(255,255,255,0.5)" />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }} />
-                <Bar dataKey="rps" fill="url(#barGradient)" radius={[8, 8, 0, 0]} />
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.9}/>
-                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.6}/>
-                  </linearGradient>
-                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                <XAxis dataKey="time" stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+                <YAxis stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: chartColors.tooltip.bg,
+                    border: `1px solid ${chartColors.tooltip.border}`,
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                />
+                <Bar dataKey="rps" fill={chartColors.rps} radius={[4, 4, 0, 0]} opacity={0.85} />
               </BarChart>
             </ResponsiveContainer>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass-strong rounded-2xl p-8"
+            className="bg-card border border-border rounded-xl p-6"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <AlertTriangle className="w-6 h-6 text-red-400" />
-              <h2 className="text-xl font-bold gradient-text">Error Rate</h2>
+            <div className="flex items-center gap-2 mb-5">
+              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <h2 className="font-semibold text-foreground">Error Rate</h2>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={260}>
               <LineChart data={errorData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" />
-                <YAxis stroke="rgba(255,255,255,0.5)" />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }} />
-                <Line type="monotone" dataKey="rate" stroke="#ef4444" strokeWidth={3} dot={{ fill: "#ef4444", r: 6 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                <XAxis dataKey="time" stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+                <YAxis stroke={chartColors.axis} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: chartColors.tooltip.bg,
+                    border: `1px solid ${chartColors.tooltip.border}`,
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                />
+                <Line type="monotone" dataKey="rate" stroke={chartColors.error} strokeWidth={2} dot={{ fill: chartColors.error, r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </motion.div>
@@ -194,16 +241,40 @@ export default function MetricsPage() {
   );
 }
 
-function MetricCard({ icon, title, value, change, gradient, isNegative = false }: any) {
+function MetricCard({
+  icon,
+  title,
+  value,
+  change,
+  color,
+  isNegative = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  change: string;
+  color: "blue" | "emerald" | "red" | "amber";
+  isNegative?: boolean;
+}) {
+  const colorMap = {
+    blue: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+    emerald: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20",
+    red: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20",
+    amber: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+  };
+
   return (
-    <motion.div whileHover={{ scale: 1.05, y: -5 }} className="glass-strong rounded-2xl p-6 glow">
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-4 animate-float`}>
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow"
+    >
+      <div className={`inline-flex p-2 rounded-lg ${colorMap[color]} mb-3`}>
         {icon}
       </div>
-      <div className="text-sm text-gray-400 mb-1">{title}</div>
-      <div className="text-3xl font-bold text-white mb-2">{value}</div>
-      <div className={`text-sm font-medium ${isNegative ? 'text-red-400' : 'text-green-400'}`}>
-        {change} from last hour
+      <div className="text-sm text-muted-foreground mb-1">{title}</div>
+      <div className="text-2xl font-bold text-foreground mb-1">{value}</div>
+      <div className={`text-xs font-medium ${isNegative ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+        {change} vs última hora
       </div>
     </motion.div>
   );
@@ -212,8 +283,8 @@ function MetricCard({ icon, title, value, change, gradient, isNegative = false }
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className={`w-4 h-4 rounded ${color}`} />
-      <span className="text-sm text-gray-300">{label}</span>
+      <div className={`w-3 h-3 rounded-sm ${color}`} />
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
 }

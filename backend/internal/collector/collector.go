@@ -230,6 +230,9 @@ func (c *Correlator) buildFromLuaLog(parsed *storage.EnvoyLogLine) *storage.Requ
 		phase.JWTClaims = lua.JWTClaims
 		rt.JWTClaims = lua.JWTClaims
 	}
+	if lua.RequestBody != "" {
+		phase.RequestBody = lua.RequestBody
+	}
 	if lua.ResponseBody != "" {
 		phase.ResponseBody = lua.ResponseBody
 	}
