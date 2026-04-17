@@ -218,7 +218,7 @@ export default function TracesPage() {
         transition={{ duration: 0.5 }}
         className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
       >
-        <div className="max-w-7xl mx-auto px-6 py-5">
+        <div className="max-w-screen-2xl mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
@@ -267,7 +267,7 @@ export default function TracesPage() {
         </div>
       </motion.header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
         {/* Quick Time Filters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

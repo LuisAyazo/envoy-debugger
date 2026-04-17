@@ -163,16 +163,22 @@ func (p *LogParser) parseLuaLog(line string, raw rawLine) *storage.LuaLogFields 
 		}
 	}
 
-	// Extraer headers_before (campo explícito o "headers" en phase_start)
+	// Extraer headers_before (campo explícito o "headers" en phase_start o client_request)
 	if v, ok := full["headers_before"]; ok {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersBefore = headers
 		}
-	} else if v, ok := full["headers"]; ok && raw.Event == "phase_start" {
+	} else if v, ok := full["headers"]; ok && (raw.Event == "phase_start" || raw.Event == "client_request") {
 		var headers map[string]string
 		if err := json.Unmarshal(v, &headers); err == nil {
 			lua.HeadersBefore = headers
+			// Para client_request, también extraer request_id de los headers si no está en top-level
+			if raw.Event == "client_request" && lua.RequestID == "" {
+				if rid, ok := headers["x-request-id"]; ok && rid != "" {
+					lua.RequestID = rid
+				}
+			}
 		}
 	}
 

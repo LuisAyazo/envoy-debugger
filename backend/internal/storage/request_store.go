@@ -111,6 +111,11 @@ func (s *RequestStore) Upsert(rt *RequestTrace) {
 		existing.Phases = append(existing.Phases, rt.Phases...)
 	}
 
+	// Mergear RequestHeaders del access log (capturados por Lua filter)
+	if len(rt.RequestHeaders) > 0 && len(existing.RequestHeaders) == 0 {
+		existing.RequestHeaders = rt.RequestHeaders
+	}
+
 	// Mergear JWT claims
 	if len(rt.JWTClaims) > 0 {
 		if existing.JWTClaims == nil {

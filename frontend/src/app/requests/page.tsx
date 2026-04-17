@@ -27,6 +27,7 @@ interface RequestTrace {
   response_flags: string;
   downstream_ip: string;
   jwt_claims: Record<string, unknown> | null;
+  request_headers: Record<string, string> | null;
   phases: PhaseLog[];
   errors: RequestError[];
   access_log_received: boolean;
@@ -283,7 +284,7 @@ export default function RequestsPage() {
         animate={{ y: 0, opacity: 1 }}
         className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
       >
-        <div className="max-w-7xl mx-auto px-6 py-5">
+        <div className="max-w-screen-2xl mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
@@ -358,7 +359,7 @@ export default function RequestsPage() {
         </div>
       </motion.header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
         {/* Filtros */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -559,12 +560,19 @@ export default function RequestsPage() {
                           <div className="text-xs text-gray-500">fases</div>
                         </div>
 
-                        {/* JWT */}
-                        {req.jwt_claims && Object.keys(req.jwt_claims).length > 0 && (
-                          <div className="px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-300 font-semibold">
-                            JWT ✓
-                          </div>
-                        )}
+                        {/* JWT — detectar desde jwt_claims O desde request_headers */}
+                        {(() => {
+                          const hasJwtClaims = req.jwt_claims && Object.keys(req.jwt_claims).length > 0;
+                          const hasJwtInHeaders = req.request_headers && Object.values(req.request_headers).some(v =>
+                            typeof v === "string" && (v.startsWith("Bearer ") || (v.split(".").length === 3 && v.length > 50))
+                          );
+                          if (!hasJwtClaims && !hasJwtInHeaders) return null;
+                          return (
+                            <div className="px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-300 font-semibold">
+                              JWT ✓
+                            </div>
+                          );
+                        })()}
 
                         {/* Errores */}
                         {req.errors && req.errors.length > 0 && (

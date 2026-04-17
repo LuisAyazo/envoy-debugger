@@ -276,7 +276,7 @@ export default function FlowPage() {
         animate={{ y: 0, opacity: 1 }}
         className="border-b border-white/10 glass-strong backdrop-blur-xl sticky top-0 z-50"
       >
-        <div className="max-w-7xl mx-auto px-6 py-5">
+        <div className="max-w-screen-2xl mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/requests">
@@ -312,7 +312,7 @@ export default function FlowPage() {
         </div>
       </motion.header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-6">
         
         {/* Request Metadata Card */}
         <motion.div
@@ -357,30 +357,174 @@ export default function FlowPage() {
           </div>
         </motion.div>
 
-        {/* JWT Claims Panel */}
-        {flowData.jwt_claims && Object.keys(flowData.jwt_claims).length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="glass-strong rounded-2xl p-6 border-2 border-yellow-500/20 glow"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <Code className="w-5 h-5 text-yellow-400" />
-              <h3 className="text-xl font-bold gradient-text">JWT Claims Extraídos</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(flowData.jwt_claims).map(([key, value]) => (
-                <div key={key} className="bg-black/30 rounded-xl p-4">
-                  <div className="text-xs text-gray-400 mb-1">{key}</div>
-                  <code className="text-sm text-yellow-300 font-mono break-all">
-                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                  </code>
+        {/* JWT Claims Panel — cada claim etiquetado con su stage/provider */}
+        {/* Panel JWT Claims: mostrar si hay jwt_claims O si hay request_headers con algún JWT */}
+        {(() => {
+          // Detectar si hay algún JWT en request_headers (cualquier header que sea un Bearer token o JWT)
+          const reqHdrs = flowData.request_headers as Record<string, string> | null;
+          const hasJwtInReqHeaders = reqHdrs && Object.values(reqHdrs).some(v =>
+            typeof v === "string" && (v.startsWith("Bearer ") || (v.split(".").length === 3 && v.length > 50))
+          );
+          const rawJwtClaims = flowData.jwt_claims as Record<string, any> | null;
+          const hasJwtClaims = rawJwtClaims && Object.keys(rawJwtClaims).length > 0;
+          if (!hasJwtClaims && !hasJwtInReqHeaders) return null;
+
+          const phases = flowData.phases ?? [];
+
+          function findHeaderInPhases(headerName: string): string | null {
+            for (const p of phases) {
+              const hdrs = p.headers_after ?? p.headers_before ?? {};
+              if (hdrs[headerName]) return hdrs[headerName];
+            }
+            for (const p of phases) {
+              if (p.headers_before?.[headerName]) return p.headers_before[headerName];
+            }
+            if (flowData.request_headers?.[headerName]) return flowData.request_headers[headerName];
+            return null;
+          }
+
+          function decodeJWTPayload(token: string): Record<string, any> | null {
+            try {
+              const t = token.replace(/^Bearer\s+/i, "").trim();
+              const parts = t.split(".");
+              if (parts.length !== 3) return null;
+              const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+              const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+              return JSON.parse(atob(padded));
+            } catch { return null; }
+          }
+
+          // ── Estrategia 1: usar jwt_claims del operador (nuevo formato con PayloadInMetadata) ──
+          // Estructura: { "beforeauth_auth0": {...}, "beforeauth_selfminted": {...}, "afterauth_usertoken": {...} }
+          // ── Estrategia 2 (fallback): decodificar tokens directamente desde request_headers ──
+
+          let beforeAuthClaims: Record<string, any> = {};
+          let afterAuthClaims: Record<string, any> = {};
+          let beforeProvider = "beforeAuth";
+          let afterProvider = "usertoken";
+
+          // Detectar si jwt_claims tiene el nuevo formato de providers (keys con beforeauth_/afterauth_)
+          const hasProviderFormat = hasJwtClaims && Object.keys(rawJwtClaims!).some(k =>
+            k.startsWith("beforeauth_") || k.startsWith("afterauth_")
+          );
+
+          if (hasProviderFormat && rawJwtClaims) {
+            // Nuevo formato: extraer claims por provider
+            for (const [key, claims] of Object.entries(rawJwtClaims)) {
+              if (key.startsWith("beforeauth_") && typeof claims === "object" && claims !== null) {
+                // Mergear claims de todos los beforeauth providers
+                beforeAuthClaims = { ...beforeAuthClaims, ...(claims as Record<string, any>) };
+                // Inferir provider name desde el key (e.g., "beforeauth_auth0" → "auth0")
+                const pname = key.replace("beforeauth_", "");
+                if (!beforeProvider || beforeProvider === "beforeAuth") beforeProvider = pname;
+              } else if (key.startsWith("afterauth_") && typeof claims === "object" && claims !== null) {
+                afterAuthClaims = { ...afterAuthClaims, ...(claims as Record<string, any>) };
+                afterProvider = key.replace("afterauth_", "");
+              }
+            }
+            // Refinar beforeProvider desde claim "sub" si está disponible
+            const sub = String(beforeAuthClaims["sub"] ?? "");
+            if (sub.startsWith("auth0|")) beforeProvider = "auth0";
+            else if (sub) beforeProvider = "selfminted";
+          } else {
+            // Fallback: decodificar tokens directamente desde headers
+            const authToken = findHeaderInPhases("authorization");
+            const userToken = findHeaderInPhases("x-vix-user-token");
+            beforeAuthClaims = authToken ? (decodeJWTPayload(authToken) ?? {}) : {};
+            afterAuthClaims = userToken ? (decodeJWTPayload(userToken) ?? {}) : {};
+            const beforeSub = String(beforeAuthClaims["sub"] ?? "");
+            beforeProvider = beforeSub.startsWith("auth0|") ? "auth0" : beforeSub ? "selfminted" : "beforeAuth";
+          }
+
+          const hasStageInfo = Object.keys(beforeAuthClaims).length > 0 || Object.keys(afterAuthClaims).length > 0;
+
+          function ClaimCard({ claimKey, value, color }: { claimKey: string; value: any; color: string }) {
+            return (
+              <div className={`border rounded-lg p-2.5 ${color}`}>
+                <div className="text-[10px] text-gray-400 font-mono mb-1 truncate" title={claimKey}>{claimKey}</div>
+                <code className="text-xs text-yellow-300 font-mono break-all">
+                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                </code>
+              </div>
+            );
+          }
+
+          if (!hasStageInfo) {
+            // Sin tokens encontrados: mostrar jwt_claims global plano
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="glass-strong rounded-2xl p-6 border-2 border-yellow-500/20"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Code className="w-5 h-5 text-yellow-400" />
+                  <h3 className="text-xl font-bold gradient-text">JWT Claims Extraídos</h3>
+                  <span className="text-xs text-gray-400">{Object.keys(flowData.jwt_claims).length} claims</span>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {Object.entries(flowData.jwt_claims).map(([k, v]) => (
+                    <ClaimCard key={k} claimKey={k} value={v} color="bg-black/30 border-white/5" />
+                  ))}
+                </div>
+              </motion.div>
+            );
+          }
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="glass-strong rounded-2xl p-6 border-2 border-yellow-500/20"
+            >
+              <div className="flex items-center gap-3 mb-5">
+                <Code className="w-5 h-5 text-yellow-400" />
+                <h3 className="text-xl font-bold gradient-text">JWT Claims Extraídos</h3>
+                <span className="text-xs text-gray-400">
+                  {Object.keys(beforeAuthClaims).length + Object.keys(afterAuthClaims).length} claims
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* BeforeAuth — authorization header */}
+                {Object.keys(beforeAuthClaims).length > 0 && (
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"></span>
+                      <span className="text-sm font-bold text-blue-300">BeforeAuth</span>
+                      <span className="text-xs text-blue-400/70 font-mono">· {beforeProvider}</span>
+                      <span className="ml-auto text-[10px] text-gray-500">{Object.keys(beforeAuthClaims).length} claims</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {Object.entries(beforeAuthClaims).map(([k, v]) => (
+                        <ClaimCard key={k} claimKey={k} value={v} color="bg-blue-500/5 border-blue-500/10" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AfterAuth — x-vix-user-token header */}
+                {Object.keys(afterAuthClaims).length > 0 && (
+                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400 inline-block"></span>
+                      <span className="text-sm font-bold text-purple-300">AfterAuth</span>
+                      <span className="text-xs text-purple-400/70 font-mono">· {afterProvider}</span>
+                      <span className="ml-auto text-[10px] text-gray-500">{Object.keys(afterAuthClaims).length} claims</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {Object.entries(afterAuthClaims).map(([k, v]) => (
+                        <ClaimCard key={k} claimKey={k} value={v} color="bg-purple-500/5 border-purple-500/10" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* Error Alert */}
         {flowData.errors && flowData.errors.length > 0 && (
@@ -549,13 +693,42 @@ export default function FlowPage() {
               </button>
             </div>
 
-            {/* Fase sintética: Request del Cliente — acordeón, filtra headers internos de Envoy */}
-            {flowData.phases && flowData.phases.length > 0 && (() => {
-              const firstPhase = flowData.phases.find((p: any) => p.event === "phase_start" && p.headers_before);
-              const allHeaders = firstPhase?.headers_before ?? {};
-              const clientHeaders = Object.fromEntries(
-                Object.entries(allHeaders).filter(([k]) => !isEnvoyInternal(k))
-              );
+            {/* Fase sintética: Request del Cliente — siempre visible (incluso en 4xx/5xx sin fases) */}
+            {(() => {
+              const phases = flowData.phases ?? [];
+              const firstPhase = phases.find((p: any) => p.event === "phase_start" && p.headers_before);
+              const luaHeaders = firstPhase?.headers_before ?? {};
+
+              // Prioridad de fuentes de headers del cliente:
+              // 1. request_headers del access log (captura TODOS los headers reales del cliente)
+              // 2. headers_before de la primera fase Lua (lista parcial)
+              // 3. Pseudo-headers básicos del access log
+              let displayHeaders: Record<string, string> = {};
+              let sourceLabel = "";
+
+              if (flowData.request_headers && Object.keys(flowData.request_headers).length > 0) {
+                // Fuente principal: access log con todos los headers
+                displayHeaders = flowData.request_headers as Record<string, string>;
+                sourceLabel = "access log";
+              } else if (Object.keys(luaHeaders).length > 0) {
+                // Fallback: headers de la primera fase Lua
+                displayHeaders = Object.fromEntries(
+                  Object.entries(luaHeaders).filter(([k]) => !isEnvoyInternal(k))
+                ) as Record<string, string>;
+                sourceLabel = "lua phase";
+              } else {
+                // Último recurso: datos básicos del access log
+                if (flowData.method) displayHeaders[":method"] = flowData.method;
+                if (flowData.path) displayHeaders[":path"] = flowData.path;
+                if (flowData.authority) displayHeaders[":authority"] = flowData.authority;
+                if (flowData.user_agent) displayHeaders["user-agent"] = flowData.user_agent;
+                if (flowData.downstream_ip) displayHeaders["x-forwarded-for"] = flowData.downstream_ip;
+                if (flowData.trace_id) displayHeaders["x-request-id"] = flowData.trace_id;
+                sourceLabel = "básico";
+              }
+              const hasDisplayHeaders = Object.keys(displayHeaders).length > 0;
+              const isFromAccessLog = sourceLabel === "access log";
+
               return (
                 <div className="px-6 pb-2">
                   <div className="glass rounded-xl border-l-4 border-cyan-500/70 bg-cyan-500/5 overflow-hidden">
@@ -565,10 +738,15 @@ export default function FlowPage() {
                     >
                       <Globe className="w-6 h-6 text-cyan-400 shrink-0" />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-white">Request del Cliente</span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">ENTRADA</span>
-                          <span className="text-[10px] text-gray-500">{Object.keys(clientHeaders).length} headers</span>
+                          {hasDisplayHeaders && <span className="text-[10px] text-gray-500">{Object.keys(displayHeaders).length} headers</span>}
+                          {flowData.status_code >= 400 && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                              {flowData.status_code}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
                           <span className="text-cyan-300 font-mono font-bold">{flowData.method}</span>{" "}
@@ -581,7 +759,7 @@ export default function FlowPage() {
                       </motion.div>
                     </div>
                     <AnimatePresence>
-                      {clientExpanded && Object.keys(clientHeaders).length > 0 && (
+                      {clientExpanded && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -590,10 +768,16 @@ export default function FlowPage() {
                           className="border-t border-white/10 bg-black/20 px-4 py-3"
                         >
                           <div className="space-y-1">
-                            {Object.entries(clientHeaders).map(([k, v]) => (
+                            {Object.entries(displayHeaders).map(([k, v]) => (
                               <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
                             ))}
                           </div>
+                          {isFromAccessLog && (
+                            <div className="mt-2 text-[10px] text-gray-600 italic">* Headers capturados por Lua filter (access log)</div>
+                          )}
+                          {!isFromAccessLog && hasDisplayHeaders && (
+                            <div className="mt-2 text-[10px] text-gray-600 italic">* Solo datos básicos del access log disponibles</div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -675,8 +859,18 @@ export default function FlowPage() {
                           }`}>{flowData.status_code}</span>
                           {upstreamHeaders && <span className="text-[10px] text-gray-500">{Object.keys(upstreamHeaders).length} headers</span>}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {flowData.upstream_cluster && <span className="text-purple-300 font-mono">{flowData.upstream_cluster}</span>}
+                        <div className="text-xs text-gray-400 mt-1 space-y-0.5">
+                          {/* Nombre del servicio upstream (cluster name = target name) */}
+                          {flowData.upstream_cluster && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-500">→</span>
+                              <span className="text-purple-300 font-mono text-[11px] font-bold">{flowData.upstream_cluster}</span>
+                            </div>
+                          )}
+                          {/* IP:puerto del backend */}
+                          {flowData.upstream_host && (
+                            <div className="text-[10px] text-gray-500 font-mono">{flowData.upstream_host}</div>
+                          )}
                         </div>
                         {/* Response flags con descripción */}
                         {flowData.response_flags && flowData.response_flags !== "-" && (() => {
@@ -827,34 +1021,45 @@ function HeaderValue({ headerKey, value, showSensitive, globalDecode = true }: {
 
   return (
     <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-start gap-1 flex-wrap">
-        <span className="text-gray-300 break-all font-mono text-xs">{shown}</span>
-        {needsTruncate && (
-          <button
-            onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
-            className="text-[10px] text-cyan-400 hover:text-cyan-300 underline whitespace-nowrap"
-          >
-            {expanded ? "colapsar" : "ver más"}
-          </button>
-        )}
-        {canDecode && decoded && (
+      {/* Si está decodificado: mostrar SOLO el decoded, no el raw */}
+      {canDecode && decoded && effectiveShowDecoded ? (
+        <div className="flex flex-col gap-1">
+          <pre className="text-[10px] bg-black/50 border border-yellow-400/20 rounded p-2 text-yellow-200 overflow-x-auto max-h-48 whitespace-pre-wrap">
+            {decoded}
+          </pre>
           <button
             onClick={e => {
               e.stopPropagation();
-              // Toggle: si está mostrando, forzar ocultar; si está oculto, forzar mostrar
-              setLocalOverride(effectiveShowDecoded ? false : true);
+              setLocalOverride(false);
             }}
-            className="text-[10px] text-yellow-400 hover:text-yellow-300 underline whitespace-nowrap"
+            className="text-[10px] text-yellow-400 hover:text-yellow-300 underline whitespace-nowrap self-start"
           >
-            {effectiveShowDecoded ? "ocultar decode" : "🔓 decodificar"}
+            ocultar decode
           </button>
-        )}
-      </div>
-      {/* Auto-mostrar decoded si globalDecode activo o si el usuario hizo click */}
-      {canDecode && decoded && effectiveShowDecoded && (
-        <pre className="text-[10px] bg-black/50 border border-yellow-400/20 rounded p-2 text-yellow-200 overflow-x-auto max-h-48 whitespace-pre-wrap">
-          {decoded}
-        </pre>
+        </div>
+      ) : (
+        <div className="flex items-start gap-1 flex-wrap">
+          <span className="text-gray-300 break-all font-mono text-xs">{shown}</span>
+          {needsTruncate && (
+            <button
+              onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
+              className="text-[10px] text-cyan-400 hover:text-cyan-300 underline whitespace-nowrap"
+            >
+              {expanded ? "colapsar" : "ver más"}
+            </button>
+          )}
+          {canDecode && decoded && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setLocalOverride(true);
+              }}
+              className="text-[10px] text-yellow-400 hover:text-yellow-300 underline whitespace-nowrap"
+            >
+              🔓 decodificar
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -1050,7 +1255,7 @@ function FlowStep({
                   <h4 className="text-sm font-bold text-yellow-300 mb-3 flex items-center gap-2">
                     <Code className="w-4 h-4" /> JWT Claims de esta fase
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {Object.entries(step.jwt_claims).map(([k, v]) => (
                       <div key={k} className="bg-yellow-500/5 border border-yellow-500/20 rounded px-3 py-2">
                         <div className="text-[10px] text-gray-400 mb-0.5">{k}</div>
@@ -1076,6 +1281,7 @@ function FlowStep({
                         headerKey={r.key}
                         value={r.value}
                         showSensitive={showSensitive}
+                        globalDecode={globalDecode}
                         added={r.status === "added"}
                         removed={r.status === "removed"}
                         changed={r.status === "changed"}
@@ -1098,6 +1304,7 @@ function FlowStep({
                         headerKey={r.key}
                         value={r.value}
                         showSensitive={showSensitive}
+                        globalDecode={globalDecode}
                         added={r.status === "added"}
                         removed={r.status === "removed"}
                         changed={r.status === "changed"}
@@ -1107,25 +1314,38 @@ function FlowStep({
                 </div>
               )}
 
-              {/* Headers Before */}
-              {beforeEntries.length > 0 && (
+              {/* Headers Before: solo mostrar en phase_start (no en phase_end donde ya se ve el diff) */}
+              {beforeEntries.length > 0 && !isEnd && (
                 <div>
                   <h4 className="text-sm font-bold text-purple-300 mb-3 flex items-center gap-2">
                     <Layers className="w-4 h-4" /> Request Headers ({beforeEntries.length})
                   </h4>
                   <div className="space-y-1">
                     {beforeEntries.map(([k, v]) => (
-                      <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} />
+                      <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Headers After */}
+              {/* Headers After: en phase_end mostrar como "Headers Finales", en phase_start como "Response Headers" */}
               {afterEntries.length > 0 && (
                 <div>
                   <h4 className="text-sm font-bold text-green-300 mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4" /> Response Headers ({afterEntries.length})
+                    <Layers className="w-4 h-4" /> {isEnd ? "Headers Finales" : "Response Headers"} ({afterEntries.length})
+                    {/* Resumen de cambios */}
+                    {step.headers_before && (() => {
+                      const added = afterEntries.filter(([k]) => !(k in step.headers_before)).length;
+                      const changed = afterEntries.filter(([k, v]) => k in step.headers_before && step.headers_before[k] !== v).length;
+                      const removed = Object.keys(step.headers_before).filter(k => !afterEntries.find(([ak]) => ak === k)).length;
+                      return (
+                        <span className="flex items-center gap-1 ml-1">
+                          {added > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-500/20 text-green-400">+{added}</span>}
+                          {changed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-yellow-500/20 text-yellow-400">~{changed}</span>}
+                          {removed > 0 && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400">-{removed}</span>}
+                        </span>
+                      );
+                    })()}
                   </h4>
                   <div className="space-y-1">
                     {afterEntries.map(([k, v]) => {
@@ -1137,11 +1357,26 @@ function FlowStep({
                           headerKey={k}
                           value={String(v)}
                           showSensitive={showSensitive}
+                          globalDecode={globalDecode}
                           changed={isChanged && !isAdded}
                           added={isAdded}
                         />
                       );
                     })}
+                    {/* Headers eliminados (estaban en before pero no en after) */}
+                    {step.headers_before && Object.entries(step.headers_before)
+                      .filter(([k]) => !afterEntries.find(([ak]) => ak === k))
+                      .map(([k, v]) => (
+                        <HeaderRow
+                          key={`removed-${k}`}
+                          headerKey={k}
+                          value={String(v)}
+                          showSensitive={showSensitive}
+                          globalDecode={globalDecode}
+                          removed={true}
+                        />
+                      ))
+                    }
                   </div>
                 </div>
               )}

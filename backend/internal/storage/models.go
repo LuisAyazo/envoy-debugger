@@ -33,6 +33,10 @@ type RequestTrace struct {
 	// Fases del pipeline (logs de Lua)
 	Phases []PhaseLog `json:"phases"`
 
+	// Headers del request del cliente (capturados por Lua filter antes del JWT)
+	// Disponibles incluso en requests 401/403 que son rechazados antes del Lua de transformación
+	RequestHeaders map[string]string `json:"request_headers,omitempty"`
+
 	// JWT claims extraídos (si hay filtro JWT)
 	JWTClaims map[string]interface{} `json:"jwt_claims,omitempty"`
 
@@ -130,6 +134,12 @@ type AccessLogFields struct {
 	UpstreamCluster string `json:"upstream_cluster"`
 	Authority       string `json:"authority"`
 	DownstreamIP    string `json:"downstream_remote_address"`
+	// RequestHeaders capturados por el Lua filter de captura (includeAllHeaders)
+	// Contiene todos los headers del request original del cliente
+	RequestHeaders map[string]string `json:"request_headers,omitempty"`
+	// JWTClaims capturados por el JWT filter de Envoy via DYNAMIC_METADATA
+	// Estructura: { "beforeauth_auth0": {...claims}, "afterauth_usertoken": {...claims} }
+	JWTClaims map[string]interface{} `json:"jwt_claims,omitempty"`
 }
 
 // LuaLogFields campos de un log de Lua (JSON structured)

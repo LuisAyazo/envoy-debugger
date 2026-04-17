@@ -124,6 +124,10 @@ func (c *Correlator) buildFromAccessLog(parsed *storage.EnvoyLogLine) *storage.R
 		DownstreamIP:      al.DownstreamIP,
 		AccessLogReceived: true,
 		EndTime:           parsed.Timestamp,
+		// Headers del cliente capturados por el Lua filter de captura (includeAllHeaders)
+		RequestHeaders: al.RequestHeaders,
+		// JWT claims capturados por el JWT filter via DYNAMIC_METADATA (payload_in_metadata)
+		JWTClaims: al.JWTClaims,
 	}
 
 	// Detectar errores por status code
@@ -173,6 +177,29 @@ func (c *Correlator) buildFromLuaLog(parsed *storage.EnvoyLogLine) *storage.Requ
 		RequestID: parsed.RequestID,
 		TraceID:   parsed.TraceID,
 		StartTime: parsed.Timestamp,
+	}
+
+	// Evento especial: client_request captura los headers originales del cliente
+	// ANTES de cualquier procesamiento JWT/WASM — no se agrega como fase
+	if lua.Event == "client_request" {
+		if len(lua.HeadersBefore) > 0 {
+			rt.RequestHeaders = lua.HeadersBefore
+			// Extraer method/path/authority de los headers del cliente
+			if m, ok := lua.HeadersBefore[":method"]; ok {
+				rt.Method = m
+			}
+			if p, ok := lua.HeadersBefore[":path"]; ok {
+				rt.Path = p
+			}
+			if a, ok := lua.HeadersBefore[":authority"]; ok {
+				rt.Authority = a
+			}
+		}
+		c.logger.Debug("Client request headers captured",
+			zap.String("request_id", rt.RequestID),
+			zap.Int("headers_count", len(lua.HeadersBefore)),
+		)
+		return rt
 	}
 
 	// Extraer datos del request si están disponibles

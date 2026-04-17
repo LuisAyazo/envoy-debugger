@@ -28,7 +28,7 @@ export default function Home() {
         transition={{ duration: 0.6, type: "spring" }}
         className="border-b border-white/10 glass-strong backdrop-blur-xl"
       >
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-screen-2xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <motion.div 
               className="flex items-center gap-4"
@@ -59,7 +59,7 @@ export default function Home() {
         transition={{ duration: 0.6, delay: 0.1 }}
         className="border-b border-white/5 glass"
       >
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex gap-1">
             <NavLink href="/traces" icon={<Eye className="w-4 h-4" />} label="Traces" />
             <NavLink href="/metrics" icon={<BarChart3 className="w-4 h-4" />} label="Metrics" />
@@ -70,7 +70,7 @@ export default function Home() {
       </motion.nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-screen-2xl mx-auto px-4 py-8 space-y-8">
         {/* Hero Stats */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
