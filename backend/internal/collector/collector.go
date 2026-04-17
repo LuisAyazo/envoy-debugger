@@ -230,6 +230,12 @@ func (c *Correlator) buildFromLuaLog(parsed *storage.EnvoyLogLine) *storage.Requ
 		phase.JWTClaims = lua.JWTClaims
 		rt.JWTClaims = lua.JWTClaims
 	}
+	if lua.ResponseBody != "" {
+		phase.ResponseBody = lua.ResponseBody
+	}
+	if lua.ResponseBodySkipped != "" {
+		phase.ResponseBodySkipped = lua.ResponseBodySkipped
+	}
 
 	rt.Phases = []storage.PhaseLog{phase}
 

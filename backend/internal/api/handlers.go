@@ -175,6 +175,14 @@ func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
 		if len(p.JWTClaims) > 0 {
 			phase["jwt_claims"] = p.JWTClaims
 		}
+		// Incluir response_body si está disponible (solo en response_phase_end)
+		if p.ResponseBody != "" {
+			phase["response_body"] = p.ResponseBody
+		}
+		// Incluir mensaje cuando el body existe pero supera 32KB
+		if p.ResponseBodySkipped != "" {
+			phase["response_body_skipped"] = p.ResponseBodySkipped
+		}
 		phases = append(phases, phase)
 	}
 

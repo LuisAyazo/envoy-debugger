@@ -200,7 +200,8 @@ export default function FlowPage() {
   const [globalSearch, setGlobalSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<"all" | "phase_start" | "phase_end" | "response_phase_start" | "response_phase_end" | "error">("all");
   const [clientExpanded, setClientExpanded] = useState(true);
-  const [upstreamExpanded, setUpstreamExpanded] = useState(true);
+  const [upstreamExpanded, setUpstreamExpanded] = useState(false);
+  const [responseExpanded, setResponseExpanded] = useState(false);
 
   const fetchFlow = useCallback(async () => {
     try {
@@ -796,93 +797,85 @@ export default function FlowPage() {
               );
             })()}
 
-            <div className="p-6 space-y-4">
-              {flowData.phases && flowData.phases.length > 0 ? (() => {
-                const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
-                const filtered = flowData.phases.filter((p: any) => eventFilter === "all" || p.event === eventFilter);
-                if (filtered.length === 0) {
-                  return (
-                    <div className="text-center py-10 text-gray-400">
-                      No hay eventos de tipo "{eventFilter}".
-                    </div>
-                  );
-                }
-                return filtered.map((phase: any, filteredIdx: number) => {
-                  const idx = flowData.phases.indexOf(phase);
-                  const prevPhase = idx > 0 ? flowData.phases[idx - 1] : null;
-                  // Solo marcar incompleta si hay más fases después y ninguna es phase_end de la misma fase
-                  const hasMorePhases = idx < flowData.phases.length - 1;
-                  const isIncomplete = phase.event === "phase_start" && hasMorePhases &&
-                    !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "phase_end");
-                  const t0 = new Date(flowData.phases[0].timestamp).getTime();
-                  const relMs = new Date(phase.timestamp).getTime() - t0;
-                  return (
-                    <FlowStep
-                      key={idx}
-                      step={phase}
-                      index={filteredIdx}
-                      ordinal={idx + 1}
-                      allSameTs={allSameTs}
-                      isExpanded={expandedSteps.has(idx)}
-                      onToggle={() => {
-                        setExpandedSteps(prev => {
-                          const next = new Set(prev);
-                          if (next.has(idx)) next.delete(idx); else next.add(idx);
-                          return next;
-                        });
-                      }}
-                      showSensitive={showSensitive}
-                      globalDecode={globalDecode}
-                      globalSearch={globalSearch}
-                      relativeMs={relMs}
-                      prevPhase={prevPhase}
-                      isIncomplete={isIncomplete}
-                    />
-                  );
-                });
-              })() : (
-                <div className="text-center py-10 text-gray-400">
-                  No hay logs de fases Lua para este request.
-                </div>
-              )}
-            </div>
-
-            {/* Fase sintética: Response al Cliente — acordeón */}
+            {/* Fases de REQUEST (phase_start / phase_end) */}
             {flowData.phases && flowData.phases.length > 0 && (() => {
-              const lastEnd = [...flowData.phases].reverse().find((p: any) => p.event === "phase_end" && p.headers_after);
-              const upstreamHeaders = lastEnd?.headers_after;
+              const requestPhases = flowData.phases.filter((p: any) =>
+                p.event === "phase_start" || p.event === "phase_end"
+              );
+              const filteredRequest = requestPhases.filter((p: any) => eventFilter === "all" || p.event === eventFilter);
+              if (filteredRequest.length === 0) return null;
+              const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
               return (
-                <div className="px-6 pb-6">
-                  <div className="glass rounded-xl border-l-4 border-purple-500/70 bg-purple-500/5 overflow-hidden">
+                <div className="p-6 space-y-4">
+                  {filteredRequest.map((phase: any, filteredIdx: number) => {
+                    const idx = flowData.phases.indexOf(phase);
+                    const prevPhase = idx > 0 ? flowData.phases[idx - 1] : null;
+                    const hasMorePhases = idx < flowData.phases.length - 1;
+                    const isIncomplete = phase.event === "phase_start" && hasMorePhases &&
+                      !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "phase_end");
+                    const t0 = new Date(flowData.phases[0].timestamp).getTime();
+                    const relMs = new Date(phase.timestamp).getTime() - t0;
+                    return (
+                      <FlowStep
+                        key={idx}
+                        step={phase}
+                        index={filteredIdx}
+                        ordinal={idx + 1}
+                        allSameTs={allSameTs}
+                        isExpanded={expandedSteps.has(idx)}
+                        onToggle={() => {
+                          setExpandedSteps(prev => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            return next;
+                          });
+                        }}
+                        showSensitive={showSensitive}
+                        globalDecode={globalDecode}
+                        globalSearch={globalSearch}
+                        relativeMs={relMs}
+                        prevPhase={prevPhase}
+                        isIncomplete={isIncomplete}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Separador UPSTREAM — servidor backend respondió */}
+            {flowData.phases && flowData.phases.length > 0 && (() => {
+              const lastRequestEnd = [...flowData.phases].reverse().find((p: any) => p.event === "phase_end" && p.headers_after);
+              const upstreamHeaders = lastRequestEnd?.headers_after;
+              return (
+                <div className="px-6 pb-2">
+                  <div className="glass rounded-xl border-l-4 border-indigo-500/70 bg-indigo-500/5 overflow-hidden">
                     <div
                       className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
                       onClick={() => setUpstreamExpanded(x => !x)}
                     >
-                      <Server className="w-6 h-6 text-purple-400 shrink-0" />
+                      <Server className="w-6 h-6 text-indigo-400 shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-white">Response al Cliente</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">SALIDA</span>
+                          <span className="font-bold text-white">Upstream Backend</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">UPSTREAM</span>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             flowData.status_code >= 200 && flowData.status_code < 300 ? "bg-green-500/20 text-green-300" :
                             flowData.status_code >= 400 ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"
                           }`}>{flowData.status_code}</span>
-                          {upstreamHeaders && <span className="text-[10px] text-gray-500">{Object.keys(upstreamHeaders).length} headers</span>}
+                          {upstreamHeaders && <span className="text-[10px] text-gray-500">{Object.keys(upstreamHeaders).length} headers recibidos</span>}
                         </div>
                         <div className="text-xs text-gray-400 mt-1 space-y-0.5">
-                          {/* Nombre del servicio upstream (cluster name = target name) */}
                           {flowData.upstream_cluster && (
                             <div className="flex items-center gap-1">
                               <span className="text-gray-500">→</span>
-                              <span className="text-purple-300 font-mono text-[11px] font-bold">{flowData.upstream_cluster}</span>
+                              <span className="text-indigo-300 font-mono text-[11px] font-bold">{flowData.upstream_cluster}</span>
                             </div>
                           )}
-                          {/* IP:puerto del backend */}
                           {flowData.upstream_host && (
                             <div className="text-[10px] text-gray-500 font-mono">{flowData.upstream_host}</div>
                           )}
                         </div>
-                        {/* Response flags con descripción */}
                         {flowData.response_flags && flowData.response_flags !== "-" && (() => {
                           const { desc, isError: flagIsError } = getResponseFlagInfo(flowData.response_flags);
                           return (
@@ -913,6 +906,254 @@ export default function FlowPage() {
                               <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
                             ))}
                           </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Fases de RESPONSE (response_phase_start / response_phase_end) */}
+            {flowData.phases && flowData.phases.length > 0 && (() => {
+              const responsePhases = flowData.phases.filter((p: any) =>
+                p.event === "response_phase_start" || p.event === "response_phase_end"
+              );
+              const filteredResponse = responsePhases.filter((p: any) => eventFilter === "all" || p.event === eventFilter);
+              if (filteredResponse.length === 0) return null;
+              const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
+              return (
+                <div className="p-6 space-y-4">
+                  {filteredResponse.map((phase: any, filteredIdx: number) => {
+                    const idx = flowData.phases.indexOf(phase);
+                    const prevPhase = idx > 0 ? flowData.phases[idx - 1] : null;
+                    const hasMorePhases = idx < flowData.phases.length - 1;
+                    const isIncomplete = phase.event === "response_phase_start" && hasMorePhases &&
+                      !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "response_phase_end");
+                    const t0 = new Date(flowData.phases[0].timestamp).getTime();
+                    const relMs = new Date(phase.timestamp).getTime() - t0;
+                    return (
+                      <FlowStep
+                        key={idx}
+                        step={phase}
+                        index={filteredIdx}
+                        ordinal={idx + 1}
+                        allSameTs={allSameTs}
+                        isExpanded={expandedSteps.has(idx)}
+                        onToggle={() => {
+                          setExpandedSteps(prev => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            return next;
+                          });
+                        }}
+                        showSensitive={showSensitive}
+                        globalDecode={globalDecode}
+                        globalSearch={globalSearch}
+                        relativeMs={relMs}
+                        prevPhase={prevPhase}
+                        isIncomplete={isIncomplete}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Card final: Response al Cliente (salida) — expandible con dos secciones */}
+            {flowData.phases && flowData.phases.length > 0 && (() => {
+              // ── Headers de RESPUESTA HTTP ──────────────────────────────────────────
+              // headers_after del último response_phase_end = headers HTTP de respuesta que recibe el cliente
+              const lastResponseEnd = [...flowData.phases].reverse().find((p: any) => p.event === "response_phase_end");
+              // headers_before del primer response_phase_start = lo que llegó del upstream (antes de que Lua lo modifique)
+              const firstResponseStart = flowData.phases.find((p: any) => p.event === "response_phase_start" && p.headers_before);
+
+              // ── Headers de REQUEST enviados al Upstream ────────────────────────────
+              // headers_after del último phase_end = headers de request que se enviaron al upstream
+              const lastRequestEnd = [...flowData.phases].reverse().find((p: any) => p.event === "phase_end" && p.headers_after);
+              // headers_before del primer phase_start = headers originales del cliente
+              const firstRequestStart = flowData.phases.find((p: any) => p.event === "phase_start" && p.headers_before);
+
+              // Headers de respuesta finales (lo que el cliente recibe como HTTP response headers)
+              const finalRespHeaders: Record<string, string> = lastResponseEnd?.headers_after ?? {};
+              // Headers del upstream antes de que Lua los modifique
+              const upstreamRespHeaders: Record<string, string> = firstResponseStart?.headers_before ?? {};
+
+              // Headers de request finales (lo que se envió al upstream)
+              const finalReqHeaders: Record<string, string> = lastRequestEnd?.headers_after ?? {};
+              // Headers de request originales del cliente
+              const origReqHeaders: Record<string, string> = firstRequestStart?.headers_before ?? {};
+
+              // Diff de headers de RESPUESTA (upstream → cliente)
+              const allRespKeys = new Set([...Object.keys(upstreamRespHeaders), ...Object.keys(finalRespHeaders)]);
+              const respDiffRows: { key: string; value: string; status: "added" | "removed" | "changed" | "same" }[] = [];
+              allRespKeys.forEach(k => {
+                const before = upstreamRespHeaders[k];
+                const after = finalRespHeaders[k];
+                if (before === undefined) {
+                  respDiffRows.push({ key: k, value: after, status: "added" });
+                } else if (after === undefined) {
+                  respDiffRows.push({ key: k, value: before, status: "removed" });
+                } else if (before !== after) {
+                  respDiffRows.push({ key: k, value: after, status: "changed" });
+                } else {
+                  respDiffRows.push({ key: k, value: after, status: "same" });
+                }
+              });
+              respDiffRows.sort((a, b) => {
+                const order = { added: 0, removed: 1, changed: 2, same: 3 };
+                return order[a.status] - order[b.status] || a.key.localeCompare(b.key);
+              });
+
+              // Diff de headers de REQUEST (cliente original → upstream)
+              const allReqKeys = new Set([...Object.keys(origReqHeaders), ...Object.keys(finalReqHeaders)]);
+              const reqDiffRows: { key: string; value: string; status: "added" | "removed" | "changed" | "same" }[] = [];
+              allReqKeys.forEach(k => {
+                const before = origReqHeaders[k];
+                const after = finalReqHeaders[k];
+                if (before === undefined) {
+                  reqDiffRows.push({ key: k, value: after, status: "added" });
+                } else if (after === undefined) {
+                  reqDiffRows.push({ key: k, value: before, status: "removed" });
+                } else if (before !== after) {
+                  reqDiffRows.push({ key: k, value: after, status: "changed" });
+                } else {
+                  reqDiffRows.push({ key: k, value: after, status: "same" });
+                }
+              });
+              reqDiffRows.sort((a, b) => {
+                const order = { added: 0, removed: 1, changed: 2, same: 3 };
+                return order[a.status] - order[b.status] || a.key.localeCompare(b.key);
+              });
+
+              const respAdded = respDiffRows.filter(r => r.status === "added").length;
+              const respRemoved = respDiffRows.filter(r => r.status === "removed").length;
+              const respChanged = respDiffRows.filter(r => r.status === "changed").length;
+
+              return (
+                <div className="px-6 pb-6">
+                  <div className="glass rounded-xl border-l-4 border-purple-500/70 bg-purple-500/5 overflow-hidden">
+                    <div
+                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                      onClick={() => setResponseExpanded(x => !x)}
+                    >
+                      <Server className="w-6 h-6 text-purple-400 shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-white">Response al Cliente</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">SALIDA</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            flowData.status_code >= 200 && flowData.status_code < 300 ? "bg-green-500/20 text-green-300" :
+                            flowData.status_code >= 400 ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"
+                          }`}>{flowData.status_code}</span>
+                          {Object.keys(finalRespHeaders).length > 0 && (
+                            <span className="text-[10px] text-gray-500">{Object.keys(finalRespHeaders).length} resp headers</span>
+                          )}
+                          {respAdded > 0 && <span className="text-[10px] font-bold text-green-400">+{respAdded}</span>}
+                          {respRemoved > 0 && <span className="text-[10px] font-bold text-red-400">-{respRemoved}</span>}
+                          {respChanged > 0 && <span className="text-[10px] font-bold text-yellow-400">~{respChanged}</span>}
+                          {Object.keys(finalReqHeaders).length > 0 && (
+                            <span className="text-[10px] text-gray-400 ml-2">· {Object.keys(finalReqHeaders).length} req headers al upstream</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Headers HTTP de respuesta al cliente · Headers de request enviados al upstream
+                        </div>
+                      </div>
+                      <motion.div animate={{ rotate: responseExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </motion.div>
+                    </div>
+                    <AnimatePresence>
+                      {responseExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="border-t border-white/10 bg-black/20"
+                        >
+                          {/* Sección 1: Headers de RESPUESTA HTTP (lo que el cliente recibe) */}
+                          {respDiffRows.length > 0 && (
+                            <div className="px-4 py-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">↓ Headers de Respuesta HTTP</span>
+                                <span className="text-[10px] text-gray-500">Lo que el cliente recibe del gateway</span>
+                                {respAdded > 0 && <span className="text-[10px] font-bold text-green-400">+{respAdded} añadidos</span>}
+                                {respRemoved > 0 && <span className="text-[10px] font-bold text-red-400">-{respRemoved} eliminados</span>}
+                                {respChanged > 0 && <span className="text-[10px] font-bold text-yellow-400">~{respChanged} modificados</span>}
+                              </div>
+                              <div className="space-y-1">
+                                {respDiffRows.map(r => (
+                                  <HeaderRow
+                                    key={r.key}
+                                    headerKey={r.key}
+                                    value={r.value}
+                                    showSensitive={showSensitive}
+                                    globalDecode={globalDecode}
+                                    added={r.status === "added"}
+                                    removed={r.status === "removed"}
+                                    changed={r.status === "changed"}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Sección 2: Headers de REQUEST enviados al Upstream */}
+                          {reqDiffRows.length > 0 && (
+                            <div className="px-4 py-3 border-t border-white/5">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">→ Headers de Request al Upstream</span>
+                                <span className="text-[10px] text-gray-500">Headers que el gateway envió al backend</span>
+                                {reqDiffRows.filter(r => r.status === "added").length > 0 && <span className="text-[10px] font-bold text-green-400">+{reqDiffRows.filter(r => r.status === "added").length} añadidos</span>}
+                                {reqDiffRows.filter(r => r.status === "removed").length > 0 && <span className="text-[10px] font-bold text-red-400">-{reqDiffRows.filter(r => r.status === "removed").length} eliminados</span>}
+                                {reqDiffRows.filter(r => r.status === "changed").length > 0 && <span className="text-[10px] font-bold text-yellow-400">~{reqDiffRows.filter(r => r.status === "changed").length} modificados</span>}
+                              </div>
+                              <div className="space-y-1">
+                                {reqDiffRows.map(r => (
+                                  <HeaderRow
+                                    key={r.key}
+                                    headerKey={r.key}
+                                    value={r.value}
+                                    showSensitive={showSensitive}
+                                    globalDecode={globalDecode}
+                                    added={r.status === "added"}
+                                    removed={r.status === "removed"}
+                                    changed={r.status === "changed"}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Sección 3: Body de la Respuesta del Upstream */}
+                          {(lastResponseEnd?.response_body || lastResponseEnd?.response_body_skipped) && (
+                            <div className="px-4 py-3 border-t border-white/5">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">📄 Body de Respuesta</span>
+                                {lastResponseEnd?.response_body && (
+                                  <span className="text-[10px] text-gray-500">JSON del upstream ({lastResponseEnd.response_body.length} bytes)</span>
+                                )}
+                                {lastResponseEnd?.response_body_skipped && (
+                                  <span className="text-[10px] text-yellow-500">⚠ no capturado</span>
+                                )}
+                              </div>
+                              {lastResponseEnd?.response_body ? (
+                                <div className="bg-black/30 rounded-lg p-3 overflow-auto max-h-96">
+                                  <JsonHighlight json={(() => {
+                                    try {
+                                      return JSON.stringify(JSON.parse(lastResponseEnd.response_body), null, 2);
+                                    } catch {
+                                      return lastResponseEnd.response_body;
+                                    }
+                                  })()} />
+                                </div>
+                              ) : (
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs text-yellow-300">
+                                  {lastResponseEnd?.response_body_skipped}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>

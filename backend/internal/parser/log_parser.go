@@ -203,6 +203,21 @@ func (p *LogParser) parseLuaLog(line string, raw rawLine) *storage.LuaLogFields 
 		}
 	}
 
+	// Extraer response_body (solo en response_phase_end, JSON <= 32KB)
+	if v, ok := full["response_body"]; ok {
+		var bodyStr string
+		if err := json.Unmarshal(v, &bodyStr); err == nil && bodyStr != "" {
+			lua.ResponseBody = bodyStr
+		}
+	}
+	// Extraer response_body_skipped (cuando el body existe pero supera 32KB)
+	if v, ok := full["response_body_skipped"]; ok {
+		var skippedStr string
+		if err := json.Unmarshal(v, &skippedStr); err == nil && skippedStr != "" {
+			lua.ResponseBodySkipped = skippedStr
+		}
+	}
+
 	// Si no hay jwt_claims, intentar extraerlos del header Authorization
 	if lua.JWTClaims == nil {
 		// Buscar en headers_before o headers_after
