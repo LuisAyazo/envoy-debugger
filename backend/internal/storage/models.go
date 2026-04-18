@@ -46,6 +46,10 @@ type RequestTrace struct {
 	// Errores detectados
 	Errors []RequestError `json:"errors,omitempty"`
 
+	// Body de la respuesta de error de Envoy (capturado por el Lua filter de captura)
+	// Ejemplo: "Jwt is expired", "Jwt is missing", etc.
+	ErrorResponseBody string `json:"error_response_body,omitempty"`
+
 	// Metadata adicional
 	DownstreamIP string `json:"downstream_ip,omitempty"`
 }

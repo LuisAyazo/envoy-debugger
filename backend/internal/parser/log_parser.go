@@ -43,6 +43,10 @@ type rawLine struct {
 	// Timestamp (presente en ambos tipos)
 	Timestamp     string `json:"timestamp"`
 	TimestampUnix *int64 `json:"timestamp_unix"`
+
+	// Campos del evento error_response (capturado por headers capture filter)
+	Status       *int   `json:"status"`
+	ResponseBody string `json:"response_body"`
 }
 
 // extractJSON extrae el JSON de una línea de log de Envoy.
@@ -93,6 +97,22 @@ func (p *LogParser) Parse(line string) *storage.EnvoyLogLine {
 
 	// Clasificar: si tiene "event" es un log de Lua
 	if raw.Event != "" {
+		// Evento especial: error_response captura el body de la respuesta de error de Envoy
+		if raw.Event == "error_response" && raw.RequestID != "" && raw.ResponseBody != "" {
+			result.Type = storage.LogTypeLuaPhase
+			result.RequestID = raw.RequestID
+			result.TraceID = raw.TraceID
+			// Reutilizar LuaLog con ResponseBody para correlación
+			result.LuaLog = &storage.LuaLogFields{
+				Event:        "error_response",
+				RequestID:    raw.RequestID,
+				TraceID:      raw.TraceID,
+				Phase:        "error",
+				Timestamp:    raw.Timestamp,
+				ResponseBody: raw.ResponseBody,
+			}
+			return result
+		}
 		result.Type = storage.LogTypeLuaPhase
 		result.TraceID = raw.TraceID
 		result.LuaLog = p.parseLuaLog(line, raw)

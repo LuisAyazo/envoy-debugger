@@ -5,6 +5,9 @@ package collector
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"strings"
 	"time"
 
 	"gateway-debugger/internal/parser"
@@ -132,9 +135,16 @@ func (c *Correlator) buildFromAccessLog(parsed *storage.EnvoyLogLine) *storage.R
 
 	// Detectar errores por status code
 	if al.ResponseCode >= 400 {
+		msg := statusMessage(al.ResponseCode)
+		// Para 401, intentar dar un mensaje más específico analizando el JWT
+		if al.ResponseCode == 401 {
+			if specific := jwtErrorMessage(al.RequestHeaders); specific != "" {
+				msg = specific
+			}
+		}
 		rt.Errors = append(rt.Errors, storage.RequestError{
 			Phase:     "upstream",
-			Message:   statusMessage(al.ResponseCode),
+			Message:   msg,
 			Timestamp: parsed.Timestamp,
 		})
 	}
@@ -198,6 +208,19 @@ func (c *Correlator) buildFromLuaLog(parsed *storage.EnvoyLogLine) *storage.Requ
 		c.logger.Debug("Client request headers captured",
 			zap.String("request_id", rt.RequestID),
 			zap.Int("headers_count", len(lua.HeadersBefore)),
+		)
+		return rt
+	}
+
+	// Evento especial: error_response captura el body de la respuesta de error de Envoy
+	// Se ejecuta en el headers capture filter (primer Lua filter, antes del JWT)
+	if lua.Event == "error_response" {
+		if lua.ResponseBody != "" {
+			rt.ErrorResponseBody = lua.ResponseBody
+		}
+		c.logger.Debug("Error response body captured",
+			zap.String("request_id", rt.RequestID),
+			zap.String("body", lua.ResponseBody),
 		)
 		return rt
 	}
@@ -274,4 +297,89 @@ func statusMessage(code int) string {
 		return "Server Error"
 	}
 	return "Unknown Error"
+}
+
+// jwtErrorMessage analiza los headers del request para dar un mensaje de error JWT más específico.
+// Decodifica el JWT del header Authorization y verifica si está expirado o tiene otros problemas.
+// Retorna "" si no puede determinar el motivo específico.
+func jwtErrorMessage(headers map[string]string) string {
+	if headers == nil {
+		return ""
+	}
+	authHeader, ok := headers["authorization"]
+	if !ok {
+		return "Unauthorized - No Authorization header"
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	token = strings.TrimSpace(token)
+
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return "Unauthorized - Invalid JWT format"
+	}
+
+	// Decodificar el payload (segunda parte)
+	payload := parts[1]
+	decoded, err := base64.RawURLEncoding.DecodeString(payload)
+	if err != nil {
+		// Intentar con padding
+		switch len(payload) % 4 {
+		case 2:
+			payload += "=="
+		case 3:
+			payload += "="
+		}
+		decoded, err = base64.URLEncoding.DecodeString(payload)
+		if err != nil {
+			return "Unauthorized - JWT decode error"
+		}
+	}
+
+	var claims map[string]interface{}
+	if err := json.Unmarshal(decoded, &claims); err != nil {
+		return "Unauthorized - JWT payload invalid"
+	}
+
+	// Verificar expiración
+	if expRaw, ok := claims["exp"]; ok {
+		var expUnix int64
+		switch v := expRaw.(type) {
+		case float64:
+			expUnix = int64(v)
+		case int64:
+			expUnix = v
+		}
+		if expUnix > 0 {
+			expTime := time.Unix(expUnix, 0)
+			if time.Now().After(expTime) {
+				diff := time.Since(expTime)
+				if diff < time.Minute {
+					return "Unauthorized - JWT expirado hace segundos"
+				} else if diff < time.Hour {
+					return "Unauthorized - JWT expirado hace " + formatDuration(diff)
+				}
+				return "Unauthorized - JWT expirado (exp: " + expTime.UTC().Format("2006-01-02 15:04 UTC") + ")"
+			}
+		}
+	}
+
+	// Si tiene exp pero no está expirado, puede ser otro problema
+	return "Unauthorized - JWT validation failed"
+}
+
+// formatDuration formatea una duración en minutos/horas legible
+func formatDuration(d time.Duration) string {
+	if d < time.Hour {
+		mins := int(d.Minutes())
+		if mins == 1 {
+			return "1 minuto"
+		}
+		return strings.TrimSpace(strings.Replace(d.Round(time.Minute).String(), "m0s", " minutos", 1))
+	}
+	hours := int(d.Hours())
+	if hours == 1 {
+		return "1 hora"
+	}
+	return strings.TrimSpace(strings.Replace(d.Round(time.Hour).String(), "h0m0s", " horas", 1))
 }

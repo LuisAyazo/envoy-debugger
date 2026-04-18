@@ -190,7 +190,7 @@ func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
 		phases = append(phases, phase)
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"request_id":          rt.RequestID,
 		"trace_id":            rt.TraceID,
 		"traceparent":         rt.Traceparent,
@@ -212,6 +212,10 @@ func buildFlowResponse(rt *storage.RequestTrace) map[string]interface{} {
 		"errors":              rt.Errors,
 		"access_log_received": rt.AccessLogReceived,
 	}
+	if rt.ErrorResponseBody != "" {
+		result["error_response_body"] = rt.ErrorResponseBody
+	}
+	return result
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

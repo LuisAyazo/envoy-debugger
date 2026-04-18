@@ -198,10 +198,11 @@ export default function FlowPage() {
   const [showSensitive, setShowSensitive] = useState(false);
   const [globalDecode, setGlobalDecode] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [eventFilter, setEventFilter] = useState<"all" | "phase_start" | "phase_end" | "response_phase_start" | "response_phase_end" | "error">("all");
+  const [eventFilter, setEventFilter] = useState<"all" | "request" | "response" | "error">("all");
   const [clientExpanded, setClientExpanded] = useState(false);
   const [upstreamExpanded, setUpstreamExpanded] = useState(false);
   const [responseExpanded, setResponseExpanded] = useState(false);
+  const [jwtClaimsExpanded, setJwtClaimsExpanded] = useState(false);
 
   const fetchFlow = useCallback(async () => {
     try {
@@ -438,6 +439,8 @@ export default function FlowPage() {
           }
 
           if (!hasStageInfo) {
+            // Si no hay claims decodificados y tampoco hay jwt_claims raw, no mostrar nada
+            if (!rawJwtClaims || Object.keys(rawJwtClaims).length === 0) return null;
             return (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -448,10 +451,10 @@ export default function FlowPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Code className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <h3 className="font-semibold text-foreground">JWT Claims Extraídos</h3>
-                  <span className="text-xs text-muted-foreground">{Object.keys(flowData.jwt_claims).length} claims</span>
+                  <span className="text-xs text-muted-foreground">{Object.keys(rawJwtClaims).length} claims</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {Object.entries(flowData.jwt_claims).map(([k, v]) => (
+                  {Object.entries(rawJwtClaims).map(([k, v]) => (
                     <ClaimCard key={k} claimKey={k} value={v} />
                   ))}
                 </div>
@@ -459,54 +462,80 @@ export default function FlowPage() {
             );
           }
 
+          const totalClaims = Object.keys(beforeAuthClaims).length + Object.keys(afterAuthClaims).length;
           return (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-card border border-amber-200 dark:border-amber-800 rounded-xl p-5"
+              className="bg-card border border-amber-200 dark:border-amber-800 rounded-xl overflow-hidden"
             >
-              <div className="flex items-center gap-2 mb-4">
+              {/* Header colapsable */}
+              <div
+                className="flex items-center gap-2 px-5 py-4 cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors"
+                onClick={() => setJwtClaimsExpanded(x => !x)}
+              >
                 <Code className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <h3 className="font-semibold text-foreground">JWT Claims Extraídos</h3>
-                <span className="text-xs text-muted-foreground">
-                  {Object.keys(beforeAuthClaims).length + Object.keys(afterAuthClaims).length} claims
+                <span className="text-xs text-muted-foreground bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                  {totalClaims} claims
                 </span>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {Object.keys(beforeAuthClaims).length > 0 && (
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
-                      <span className="text-xs font-semibold text-foreground">BeforeAuth</span>
-                      <span className="text-xs text-muted-foreground font-mono">· {beforeProvider}</span>
-                      <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(beforeAuthClaims).length} claims</span>
-                    </div>
-                    <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      {Object.entries(beforeAuthClaims).map(([k, v]) => (
-                        <ClaimCard key={k} claimKey={k} value={v} />
-                      ))}
-                    </div>
-                  </div>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">BeforeAuth · {beforeProvider}</span>
                 )}
-
                 {Object.keys(afterAuthClaims).length > 0 && (
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
-                      <span className="text-xs font-semibold text-foreground">AfterAuth</span>
-                      <span className="text-xs text-muted-foreground font-mono">· {afterProvider}</span>
-                      <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(afterAuthClaims).length} claims</span>
-                    </div>
-                    <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      {Object.entries(afterAuthClaims).map(([k, v]) => (
-                        <ClaimCard key={k} claimKey={k} value={v} />
-                      ))}
-                    </div>
-                  </div>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">AfterAuth · {afterProvider}</span>
                 )}
+                <motion.div className="ml-auto" animate={{ rotate: jwtClaimsExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </motion.div>
               </div>
+
+              <AnimatePresence>
+                {jwtClaimsExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="border-t border-amber-200 dark:border-amber-800"
+                  >
+                    <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      {Object.keys(beforeAuthClaims).length > 0 && (
+                        <div className="rounded-xl border border-border overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                            <span className="text-xs font-semibold text-foreground">BeforeAuth</span>
+                            <span className="text-xs text-muted-foreground font-mono">· {beforeProvider}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(beforeAuthClaims).length} claims</span>
+                          </div>
+                          <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            {Object.entries(beforeAuthClaims).map(([k, v]) => (
+                              <ClaimCard key={k} claimKey={k} value={v} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {Object.keys(afterAuthClaims).length > 0 && (
+                        <div className="rounded-xl border border-border overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b border-border">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                            <span className="text-xs font-semibold text-foreground">AfterAuth</span>
+                            <span className="text-xs text-muted-foreground font-mono">· {afterProvider}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">{Object.keys(afterAuthClaims).length} claims</span>
+                          </div>
+                          <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            {Object.entries(afterAuthClaims).map(([k, v]) => (
+                              <ClaimCard key={k} claimKey={k} value={v} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           );
         })()}
@@ -533,6 +562,15 @@ export default function FlowPage() {
                         <span className="text-xs text-muted-foreground">{new Date(err.timestamp).toLocaleTimeString()}</span>
                       </div>
                       <div className="text-sm text-red-700 dark:text-red-300">{err.message}</div>
+                      {/* Body de la respuesta de error (capturado por Lua filter) */}
+                      {idx === 0 && flowData.error_response_body && (
+                        <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-700">
+                          <div className="text-xs text-red-500 dark:text-red-400 font-mono font-semibold mb-1">Response body:</div>
+                          <div className="font-mono text-xs bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded px-2 py-1 text-red-800 dark:text-red-200 break-all">
+                            {flowData.error_response_body}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -620,21 +658,57 @@ export default function FlowPage() {
               <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">{flowData.phases?.length ?? 0} eventos</span>
             </div>
 
-            {/* Timeline visual — usa índice ordinal #N cuando todos los timestamps son iguales */}
+            {/* Timeline visual — clickeable para expandir la tarjeta correspondiente */}
             {flowData.phases && flowData.phases.length > 0 && (() => {
               const allSameTs = flowData.phases.every((p: any) => p.timestamp === flowData.phases[0].timestamp);
+              // Construir mapa de idx → pairStartIdx para saber qué tarjeta expandir
+              const idxToPairStart: Record<number, number> = {};
+              const usedForTimeline = new Set<number>();
+              flowData.phases.forEach((phase: any, idx: number) => {
+                if (usedForTimeline.has(idx)) return;
+                if (phase.event === "phase_start" || phase.event === "response_phase_start") {
+                  const endPhase = flowData.phases.slice(idx + 1).find((p: any) =>
+                    p.phase === phase.phase && (p.event === "phase_end" || p.event === "response_phase_end")
+                  );
+                  const endIdx = endPhase ? flowData.phases.indexOf(endPhase) : -1;
+                  idxToPairStart[idx] = idx;
+                  usedForTimeline.add(idx);
+                  if (endIdx >= 0) { idxToPairStart[endIdx] = idx; usedForTimeline.add(endIdx); }
+                } else if (!usedForTimeline.has(idx)) {
+                  idxToPairStart[idx] = idx;
+                  usedForTimeline.add(idx);
+                }
+              });
               return (
                 <div className="px-6 pt-4 pb-2 flex items-center gap-0 overflow-x-auto">
                   {flowData.phases.map((phase: any, idx: number) => {
                     const isIncomplete = phase.event === "phase_start" &&
                       !flowData.phases.slice(idx + 1).some((p: any) => p.phase === phase.phase && p.event === "phase_end");
-                    const isResponse = phase.event === "response_phase_start" || phase.event === "response_phase_end";
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
                     const relMs = new Date(phase.timestamp).getTime() - t0;
+                    const pairStartIdx = idxToPairStart[idx] ?? idx;
+                    const isExpanded = expandedSteps.has(pairStartIdx);
                     return (
                       <div key={idx} className="flex items-center">
-                        <div className="flex flex-col items-center">
-                          <div className={`w-3 h-3 rounded-full border-2 ${
+                        <button
+                          className="flex flex-col items-center group"
+                          title={`${phase.phase} — click para ${isExpanded ? "colapsar" : "expandir"}`}
+                          onClick={() => {
+                            setExpandedSteps(prev => {
+                              const next = new Set(prev);
+                              if (next.has(pairStartIdx)) next.delete(pairStartIdx); else next.add(pairStartIdx);
+                              return next;
+                            });
+                            // Scroll suave a la tarjeta
+                            setTimeout(() => {
+                              const el = document.getElementById(`phase-pair-${pairStartIdx}`);
+                              if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }, 50);
+                          }}
+                        >
+                          <div className={`w-3 h-3 rounded-full border-2 transition-all group-hover:scale-125 ${
+                            isExpanded ? "ring-2 ring-offset-1 ring-primary/50" : ""
+                          } ${
                             isIncomplete ? "border-yellow-400 bg-yellow-400/30" :
                             phase.event === "phase_end" ? "border-green-400 bg-green-400/30" :
                             phase.event === "response_phase_end" ? "border-orange-400 bg-orange-400/30" :
@@ -642,11 +716,11 @@ export default function FlowPage() {
                             phase.event === "error" ? "border-red-400 bg-red-400/30" :
                             "border-blue-400 bg-blue-400/30"
                           }`} />
-                          <div className="text-[9px] text-muted-foreground mt-1 whitespace-nowrap">
+                          <div className="text-[9px] text-muted-foreground mt-1 whitespace-nowrap group-hover:text-foreground transition-colors">
                             {allSameTs ? `#${idx + 1}` : `+${relMs}ms`}
                           </div>
-                          <div className="text-[9px] text-muted-foreground/70 whitespace-nowrap max-w-[70px] truncate">{phase.phase}</div>
-                        </div>
+                          <div className="text-[9px] text-muted-foreground/70 whitespace-nowrap max-w-[70px] truncate group-hover:text-muted-foreground transition-colors">{friendlyPhaseName(phase.phase)}</div>
+                        </button>
                         {idx < flowData.phases.length - 1 && (
                           <div className="w-8 h-px bg-border mx-1" />
                         )}
@@ -662,10 +736,8 @@ export default function FlowPage() {
               <Filter className="w-3 h-3 text-muted-foreground" />
               {([
                 { key: "all", label: "Todos" },
-                { key: "phase_start", label: "Request Start" },
-                { key: "phase_end", label: "Request End" },
-                { key: "response_phase_start", label: "Response Start" },
-                { key: "response_phase_end", label: "Response End" },
+                { key: "request", label: "REQUEST PHASES" },
+                { key: "response", label: "RESPONSE PHASES" },
                 { key: "error", label: "Errores" },
               ] as const).map(f => (
                 <button
@@ -681,6 +753,17 @@ export default function FlowPage() {
                 </button>
               ))}
               <div className="flex-1" />
+              {/* Ir al resultado final */}
+              <button
+                onClick={() => {
+                  const el = document.getElementById("response-al-cliente");
+                  if (el) { setResponseExpanded(true); setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+              >
+                <CheckCircle className="w-3 h-3" />
+                Resultado final
+              </button>
               <button
                 onClick={() => {
                   const phases = flowData.phases ?? [];
@@ -847,11 +930,10 @@ export default function FlowPage() {
               });
 
               // Filtrar según eventFilter
-              const filteredPairs = pairs.filter(({ start, end }) => {
-                if (eventFilter === "all") return true;
-                if (eventFilter === "phase_start") return !!start && start.event === "phase_start";
-                if (eventFilter === "phase_end") return !!end;
-                return false;
+              const filteredPairs = pairs.filter(() => {
+                if (eventFilter === "all" || eventFilter === "request") return true;
+                if (eventFilter === "response" || eventFilter === "error") return false;
+                return true;
               });
               if (filteredPairs.length === 0) return null;
 
@@ -864,28 +946,29 @@ export default function FlowPage() {
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
                     const relMs = new Date(start.timestamp).getTime() - t0;
                     return (
-                      <FlowPhasePair
-                        key={startIdx}
-                        phaseStart={start}
-                        phaseEnd={end}
-                        ordinal={startIdx + 1}
-                        pairIndex={pairIdx}
-                        allSameTs={allSameTs}
-                        relativeMs={relMs}
-                        isIncomplete={isIncomplete}
-                        isExpanded={expandedSteps.has(startIdx)}
-                        onToggle={() => {
-                          setExpandedSteps(prev => {
-                            const next = new Set(prev);
-                            if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
-                            return next;
-                          });
-                        }}
-                        showSensitive={showSensitive}
-                        globalDecode={globalDecode}
-                        globalSearch={globalSearch}
-                        isResponse={false}
-                      />
+                      <div key={startIdx} id={`phase-pair-${startIdx}`}>
+                        <FlowPhasePair
+                          phaseStart={start}
+                          phaseEnd={end}
+                          ordinal={startIdx + 1}
+                          pairIndex={pairIdx}
+                          allSameTs={allSameTs}
+                          relativeMs={relMs}
+                          isIncomplete={isIncomplete}
+                          isExpanded={expandedSteps.has(startIdx)}
+                          onToggle={() => {
+                            setExpandedSteps(prev => {
+                              const next = new Set(prev);
+                              if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
+                              return next;
+                            });
+                          }}
+                          showSensitive={showSensitive}
+                          globalDecode={globalDecode}
+                          globalSearch={globalSearch}
+                          isResponse={false}
+                        />
+                      </div>
                     );
                   })}
                 </div>
@@ -901,14 +984,33 @@ export default function FlowPage() {
               const firstRespEnd = flowData.phases.find((p: any) => p.event === "response_phase_end" && p.response_body);
               const upstreamResponseBody = firstRespStart?.response_body ?? firstRespEnd?.response_body;
               const hasContent = (upstreamHeaders && Object.keys(upstreamHeaders).length > 0) || upstreamResponseBody;
+              const isUpstreamError = flowData.status_code >= 400;
+              const upstreamBorderColor = isUpstreamError
+                ? "border-l-red-400 dark:border-l-red-500"
+                : "border-l-slate-400 dark:border-l-slate-500";
               return (
                 <div className="px-5 pb-3">
-                  <div className="bg-background border border-border border-l-4 border-l-slate-400 dark:border-l-slate-500 rounded-xl overflow-hidden">
+                  <div className={`bg-background border border-border border-l-4 ${upstreamBorderColor} rounded-xl overflow-hidden`}>
+                    {/* Banner de error si el upstream devolvió error */}
+                    {isUpstreamError && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+                        <XCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                        <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+                          El upstream rechazó el request con {flowData.status_code}
+                          {flowData.status_code === 401 ? " — No autorizado" :
+                           flowData.status_code === 403 ? " — Prohibido" :
+                           flowData.status_code === 404 ? " — No encontrado" :
+                           flowData.status_code === 500 ? " — Error interno del servidor" :
+                           flowData.status_code === 503 ? " — Servicio no disponible" :
+                           flowData.status_code === 504 ? " — Gateway timeout" : ""}
+                        </span>
+                      </div>
+                    )}
                     <div
                       className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => setUpstreamExpanded(x => !x)}
                     >
-                      <Server className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <Server className={`w-4 h-4 shrink-0 ${isUpstreamError ? "text-red-500 dark:text-red-400" : "text-muted-foreground"}`} />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-foreground text-sm">Upstream Backend</span>
@@ -1013,11 +1115,10 @@ export default function FlowPage() {
                 }
               });
 
-              const filteredPairs = pairs.filter(({ start, end }) => {
-                if (eventFilter === "all") return true;
-                if (eventFilter === "response_phase_start") return !!start && start.event === "response_phase_start";
-                if (eventFilter === "response_phase_end") return !!end;
-                return false;
+              const filteredPairs = pairs.filter(() => {
+                if (eventFilter === "all" || eventFilter === "response") return true;
+                if (eventFilter === "request" || eventFilter === "error") return false;
+                return true;
               });
               if (filteredPairs.length === 0) return null;
 
@@ -1030,28 +1131,29 @@ export default function FlowPage() {
                     const t0 = new Date(flowData.phases[0].timestamp).getTime();
                     const relMs = new Date(start.timestamp).getTime() - t0;
                     return (
-                      <FlowPhasePair
-                        key={startIdx}
-                        phaseStart={start}
-                        phaseEnd={end}
-                        ordinal={startIdx + 1}
-                        pairIndex={pairIdx}
-                        allSameTs={allSameTs}
-                        relativeMs={relMs}
-                        isIncomplete={isIncomplete}
-                        isExpanded={expandedSteps.has(startIdx)}
-                        onToggle={() => {
-                          setExpandedSteps(prev => {
-                            const next = new Set(prev);
-                            if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
-                            return next;
-                          });
-                        }}
-                        showSensitive={showSensitive}
-                        globalDecode={globalDecode}
-                        globalSearch={globalSearch}
-                        isResponse={true}
-                      />
+                      <div key={startIdx} id={`phase-pair-${startIdx}`}>
+                        <FlowPhasePair
+                          phaseStart={start}
+                          phaseEnd={end}
+                          ordinal={startIdx + 1}
+                          pairIndex={pairIdx}
+                          allSameTs={allSameTs}
+                          relativeMs={relMs}
+                          isIncomplete={isIncomplete}
+                          isExpanded={expandedSteps.has(startIdx)}
+                          onToggle={() => {
+                            setExpandedSteps(prev => {
+                              const next = new Set(prev);
+                              if (next.has(startIdx)) next.delete(startIdx); else next.add(startIdx);
+                              return next;
+                            });
+                          }}
+                          showSensitive={showSensitive}
+                          globalDecode={globalDecode}
+                          globalSearch={globalSearch}
+                          isResponse={true}
+                        />
+                      </div>
                     );
                   })}
                 </div>
@@ -1129,7 +1231,7 @@ export default function FlowPage() {
               const respChanged = respDiffRows.filter(r => r.status === "changed").length;
 
               return (
-                <div className="px-5 pb-5">
+                <div className="px-5 pb-5" id="response-al-cliente">
                   <div className="bg-background border border-border border-l-4 border-l-emerald-400 dark:border-l-emerald-500 rounded-xl overflow-hidden">
                     <div
                       className="p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
@@ -1233,7 +1335,7 @@ export default function FlowPage() {
                                 )}
                               </div>
                               {lastResponseEnd?.response_body ? (
-                                <div className="bg-muted rounded-lg p-3 overflow-auto max-h-96">
+                                <div className="bg-muted rounded-lg p-3 overflow-auto max-h-96 border border-border">
                                   <JsonHighlight json={(() => {
                                     try {
                                       return JSON.stringify(JSON.parse(lastResponseEnd.response_body), null, 2);
@@ -1803,6 +1905,7 @@ function FlowStep({
   );
 }
 
+
 // ─── FlowPhasePair ───────────────────────────────────────────────────────────
 // Muestra un par START/END como una sola tarjeta agrupada
 
@@ -1825,6 +1928,7 @@ function FlowPhasePair({
   globalSearch: string;
   isResponse: boolean;
 }) {
+  const [showAllHeaders, setShowAllHeaders] = useState(false);
   const search = globalSearch.toLowerCase().trim();
 
   function filterHeaders(headers: Record<string, string> | null): [string, string][] {
@@ -1839,23 +1943,22 @@ function FlowPhasePair({
     after: Record<string, string> | null
   ) {
     const allKeys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
-    const rows: { key: string; value: string; status: "same" | "changed" | "added" | "removed" }[] = [];
+    const rows: { key: string; before: string | undefined; value: string; status: "same" | "changed" | "added" | "removed" }[] = [];
     allKeys.forEach(k => {
       const bv = before?.[k];
       const av = after?.[k];
       const bvEmpty = bv === undefined || isEmptyHeaderValue(bv);
       const avEmpty = av === undefined || isEmptyHeaderValue(av);
       if (bvEmpty && avEmpty) return;
-      if (bvEmpty && !avEmpty) rows.push({ key: k, value: av!, status: "added" });
-      else if (!bvEmpty && avEmpty) rows.push({ key: k, value: bv!, status: "removed" });
-      else if (bv !== av) rows.push({ key: k, value: av!, status: "changed" });
-      else rows.push({ key: k, value: av!, status: "same" });
+      if (bvEmpty && !avEmpty) rows.push({ key: k, before: undefined, value: av!, status: "added" });
+      else if (!bvEmpty && avEmpty) rows.push({ key: k, before: bv, value: bv!, status: "removed" });
+      else if (bv !== av) rows.push({ key: k, before: bv, value: av!, status: "changed" });
+      else rows.push({ key: k, before: bv, value: av!, status: "same" });
     });
     return rows;
   }
 
   // Diff principal: headers_before del START → headers_after del END
-  // Si no hay END, usamos headers_before → headers_after del START
   const diffBefore = phaseStart?.headers_before ?? null;
   const diffAfter = phaseEnd?.headers_after ?? phaseStart?.headers_after ?? null;
   const internalDiff = diffBefore || diffAfter ? computeDiff(diffBefore, diffAfter) : null;
@@ -1870,14 +1973,16 @@ function FlowPhasePair({
   } : null;
 
   // Duración de la fase (ms entre start y end)
-  const durationMs = phaseStart && phaseEnd
-    ? new Date(phaseEnd.timestamp).getTime() - new Date(phaseStart.timestamp).getTime()
+  const startTs = phaseStart?.timestamp ?? phaseEnd?.timestamp;
+  const endTs = phaseEnd?.timestamp;
+  const durationMs = startTs && endTs
+    ? new Date(endTs).getTime() - new Date(startTs).getTime()
     : null;
 
   // JWT claims: preferir los del END (más completos), fallback al START
   const jwtClaims = phaseEnd?.jwt_claims ?? phaseStart?.jwt_claims ?? null;
 
-  // Headers before (del START) y after (del END)
+  // Headers before (del START) y after (del END) — para la sección colapsable
   const beforeEntries = filterHeaders(phaseStart?.headers_before ?? null);
   const afterEntries = filterHeaders(phaseEnd?.headers_after ?? phaseStart?.headers_after ?? null);
 
@@ -1948,13 +2053,22 @@ function FlowPhasePair({
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
-                  <span>{new Date(phaseStart?.timestamp ?? phaseEnd?.timestamp).toLocaleTimeString()}</span>
+                  {/* Mejora 5: mostrar START → END con duración */}
+                  {startTs && (
+                    <span>{new Date(startTs).toLocaleTimeString()}</span>
+                  )}
+                  {endTs && startTs !== endTs && (
+                    <>
+                      <span className="text-muted-foreground/50">→</span>
+                      <span>{new Date(endTs).toLocaleTimeString()}</span>
+                    </>
+                  )}
                   <span className="font-mono text-foreground/60">
                     {allSameTs ? `#${ordinal}` : `+${relativeMs}ms`}
                   </span>
                 </div>
-                {durationMs !== null && durationMs > 0 && (
-                  <span className="text-[10px] text-muted-foreground font-mono">
+                {durationMs !== null && durationMs >= 0 && (
+                  <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
                     ⏱ {durationMs}ms
                   </span>
                 )}
@@ -2004,6 +2118,7 @@ function FlowPhasePair({
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                     <Code className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> JWT Claims
+                    <span className="text-[10px] text-muted-foreground">{Object.keys(jwtClaims).length} claims</span>
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {Object.entries(jwtClaims).map(([k, v]) => (
@@ -2018,7 +2133,7 @@ function FlowPhasePair({
                 </div>
               )}
 
-              {/* Diff principal: headers_before (START) → headers_after (END) */}
+              {/* Mejora 9: Diff principal con colores correctos — solo cambios */}
               {filteredDiff && filteredDiff.some(r => r.status !== "same") && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -2047,64 +2162,7 @@ function FlowPhasePair({
                 </div>
               )}
 
-              {/* Headers Before (entrada a la fase) */}
-              {beforeEntries.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                    {isResponse ? "Response Headers (entrada)" : "Request Headers (entrada)"} ({beforeEntries.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {beforeEntries.map(([k, v]) => (
-                      <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Headers After (salida de la fase) */}
-              {afterEntries.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                    {isResponse ? "Response Headers (salida)" : "Request Headers (salida)"} ({afterEntries.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {afterEntries.map(([k, v]) => {
-                      const bef = phaseStart?.headers_before;
-                      const isChanged = bef && bef[k] !== v;
-                      const isAdded = bef && !(k in bef);
-                      return (
-                        <HeaderRow
-                          key={k}
-                          headerKey={k}
-                          value={String(v)}
-                          showSensitive={showSensitive}
-                          globalDecode={globalDecode}
-                          changed={isChanged && !isAdded}
-                          added={isAdded}
-                        />
-                      );
-                    })}
-                    {/* Headers removidos */}
-                    {phaseStart?.headers_before && Object.entries(phaseStart.headers_before)
-                      .filter(([k]) => !afterEntries.find(([ak]) => ak === k))
-                      .map(([k, v]) => (
-                        <HeaderRow
-                          key={`removed-${k}`}
-                          headerKey={k}
-                          value={String(v)}
-                          showSensitive={showSensitive}
-                          globalDecode={globalDecode}
-                          removed={true}
-                        />
-                      ))
-                    }
-                  </div>
-                </div>
-              )}
-
-              {/* Body de Respuesta del Upstream (solo en response phases) */}
+              {/* Mejora 7: Body de Respuesta con estilo consistente */}
               {isResponse && (responseBody || responseBodySkipped) && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -2127,6 +2185,94 @@ function FlowPhasePair({
                       {responseBodySkipped}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Mejora 1: Headers completos detrás de toggle secundario */}
+              {(beforeEntries.length > 0 || afterEntries.length > 0) && (
+                <div>
+                  <button
+                    onClick={() => setShowAllHeaders(x => !x)}
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>{showAllHeaders ? "Ocultar" : "Ver"} todos los headers</span>
+                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                      {beforeEntries.length} entrada · {afterEntries.length} salida
+                    </span>
+                    <motion.span animate={{ rotate: showAllHeaders ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown className="w-3 h-3" />
+                    </motion.span>
+                  </button>
+
+                  <AnimatePresence>
+                    {showAllHeaders && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="mt-3 space-y-4 overflow-hidden"
+                      >
+                        {/* Headers Before (entrada a la fase) */}
+                        {beforeEntries.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                              <Layers className="w-3 h-3" />
+                              {isResponse ? "Response Headers (entrada)" : "Request Headers (entrada)"} ({beforeEntries.length})
+                            </h5>
+                            <div className="space-y-1">
+                              {beforeEntries.map(([k, v]) => (
+                                <HeaderRow key={k} headerKey={k} value={String(v)} showSensitive={showSensitive} globalDecode={globalDecode} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Mejora 9: Headers After con colores diff correctos */}
+                        {afterEntries.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                              <Layers className="w-3 h-3" />
+                              {isResponse ? "Response Headers (salida)" : "Request Headers (salida)"} ({afterEntries.length})
+                            </h5>
+                            <div className="space-y-1">
+                              {afterEntries.map(([k, v]) => {
+                                const bef = phaseStart?.headers_before;
+                                const isAdded = bef && !(k in bef);
+                                const isChanged = bef && !isAdded && bef[k] !== v;
+                                return (
+                                  <HeaderRow
+                                    key={k}
+                                    headerKey={k}
+                                    value={String(v)}
+                                    showSensitive={showSensitive}
+                                    globalDecode={globalDecode}
+                                    changed={!!isChanged}
+                                    added={!!isAdded}
+                                  />
+                                );
+                              })}
+                              {/* Headers removidos (estaban en before pero no en after) */}
+                              {phaseStart?.headers_before && Object.entries(phaseStart.headers_before)
+                                .filter(([k]) => !afterEntries.find(([ak]) => ak === k))
+                                .map(([k, v]) => (
+                                  <HeaderRow
+                                    key={`removed-${k}`}
+                                    headerKey={k}
+                                    value={String(v)}
+                                    showSensitive={showSensitive}
+                                    globalDecode={globalDecode}
+                                    removed={true}
+                                  />
+                                ))
+                              }
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 

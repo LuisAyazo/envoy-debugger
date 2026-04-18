@@ -130,6 +130,11 @@ func (s *RequestStore) Upsert(rt *RequestTrace) {
 	if len(rt.Errors) > 0 {
 		existing.Errors = append(existing.Errors, rt.Errors...)
 	}
+
+	// Mergear ErrorResponseBody (body de la respuesta de error de Envoy)
+	if rt.ErrorResponseBody != "" && existing.ErrorResponseBody == "" {
+		existing.ErrorResponseBody = rt.ErrorResponseBody
+	}
 }
 
 // Get retorna un RequestTrace por request_id
